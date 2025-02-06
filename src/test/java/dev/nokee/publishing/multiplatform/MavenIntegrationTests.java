@@ -6,7 +6,6 @@ import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
-import org.gradle.api.publish.ivy.IvyPublication;
 import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,5 +55,10 @@ class MavenIntegrationTests {
 		ArgumentCaptor<MavenPublication> captor = ArgumentCaptor.captor();
 		Mockito.verify(action).execute(captor.capture());
 		assertThat(captor.getAllValues(), contains(publications.getByName("test")));
+	}
+
+	@Test
+	void canRegisterVariantPublications() {
+		assertThat(subject.getVariantPublications().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(MavenPublication.class))));
 	}
 }

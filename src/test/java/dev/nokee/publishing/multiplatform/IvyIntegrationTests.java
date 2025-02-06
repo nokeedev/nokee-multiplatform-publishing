@@ -1,14 +1,12 @@
 package dev.nokee.publishing.multiplatform;
 
 import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication;
-import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
-import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,5 +55,10 @@ class IvyIntegrationTests {
 		ArgumentCaptor<IvyPublication> captor = ArgumentCaptor.captor();
 		Mockito.verify(action).execute(captor.capture());
 		assertThat(captor.getAllValues(), contains(publications.getByName("test")));
+	}
+
+	@Test
+	void canRegisterVariantPublications() {
+		assertThat(subject.getVariantPublications().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(IvyPublication.class))));
 	}
 }
