@@ -1,1 +1,6 @@
+pluginManagement {
+	includeBuild 'gradle/plugins/nokeebuild-plugins'
+	includeBuild 'gradle/plugins/sampledev-plugins'
+}
+
 rootProject.name = 'nokee-multiplatform-publishing'
