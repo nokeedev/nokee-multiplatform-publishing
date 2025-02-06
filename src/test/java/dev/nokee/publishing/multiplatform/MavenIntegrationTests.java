@@ -1,6 +1,7 @@
 package dev.nokee.publishing.multiplatform;
 
 import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
+import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.publish.Publication;
@@ -11,6 +12,8 @@ import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.nio.file.Path;
 
@@ -42,5 +45,16 @@ class MavenIntegrationTests {
 	@Test
 	void canAccessRootPublication() {
 		assertThat(subject.getRootPublication(), providerOf(publications.getByName("test")));
+	}
+
+	@Test
+	void canConfigureRootPublication() {
+		Action<MavenPublication> action = Mockito.mock();
+
+		subject.rootPublication(action);
+
+		ArgumentCaptor<MavenPublication> captor = ArgumentCaptor.captor();
+		Mockito.verify(action).execute(captor.capture());
+		assertThat(captor.getAllValues(), contains(publications.getByName("test")));
 	}
 }

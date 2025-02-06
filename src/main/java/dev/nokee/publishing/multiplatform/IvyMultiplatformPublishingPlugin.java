@@ -46,7 +46,7 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 
 		@Override
 		public void rootPublication(Action<? super IvyPublication> configureAction) {
-			throw new UnsupportedOperationException();
+			rootPublication.configure(configureAction);
 		}
 
 		@Override

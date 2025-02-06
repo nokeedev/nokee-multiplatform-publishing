@@ -1,0 +1,2 @@
+[libraries]
+mockito-core = { module = "org.mockito:mockito-core", version = "5.15.2" }

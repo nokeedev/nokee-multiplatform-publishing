@@ -46,7 +46,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 
 		@Override
 		public void rootPublication(Action<? super MavenPublication> configureAction) {
-			throw new UnsupportedOperationException();
+			rootPublication.configure(configureAction);
 		}
 
 		@Override

@@ -31,6 +31,10 @@ testing {
 		test {
 			dependencies {
 				implementation 'dev.nokee.commons:commons-hamcrest'
+				implementation 'dev.nokee.templates:nokee-code-templates'
+				implementation 'dev.gradleplugins:gradle-runner-kit:latest.release'
+				implementation 'dev.nokee.commons:test-gradle-projects:latest.release'
+				implementation libs.mockito.core
 			}
 		}
 	}
