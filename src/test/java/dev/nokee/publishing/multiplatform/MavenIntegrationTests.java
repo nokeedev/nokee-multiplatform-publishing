@@ -4,6 +4,7 @@ import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.maven.MavenPublication;
@@ -60,5 +61,29 @@ class MavenIntegrationTests {
 	@Test
 	void canRegisterVariantPublications() {
 		assertThat(subject.getVariantPublications().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(MavenPublication.class))));
+	}
+
+	@Test
+	void defaultsVariantPublicationArtifactId() {
+		subject.rootPublication(it -> it.setArtifactId("my-app"));
+		Provider<String> artifactId = subject.getVariantPublications().register("debug").map(MavenPublication::getArtifactId);
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat(artifactId, providerOf("my-app_debug"));
+	}
+
+	@Test
+	void defaultsVariantPublicationGroup() {
+		subject.rootPublication(it -> it.setGroupId("com.example"));
+		Provider<String> module = subject.getVariantPublications().register("debug").map(MavenPublication::getGroupId);
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat(module, providerOf("com.example"));
+	}
+
+	@Test
+	void defaultsPlatformsToVariantPublications() {
+		subject.rootPublication(it -> it.setArtifactId("my-lib"));
+		subject.getVariantPublications().register("debug");
+		subject.getVariantPublications().register("release");
+		assertThat(subject.getPlatforms(), providerOf(contains("my-lib_debug", "my-lib_release")));
 	}
 }

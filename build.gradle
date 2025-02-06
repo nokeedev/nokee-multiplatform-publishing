@@ -23,7 +23,8 @@ gradlePlugin {
 
 	dependencies {
 		implementation 'dev.nokee.commons:commons-names:latest.release'
-		implementation 'dev.nokee.commons:commons-gradle:latest.release'
+		implementation 'dev.nokee.commons:commons-gradle:latest.release' // NamedDomainObjectRegistry
+		implementation 'dev.nokee.commons:commons-provider:latest.release' // transformEach
 	}
 }
 

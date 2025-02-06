@@ -4,6 +4,7 @@ import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
@@ -60,5 +61,29 @@ class IvyIntegrationTests {
 	@Test
 	void canRegisterVariantPublications() {
 		assertThat(subject.getVariantPublications().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(IvyPublication.class))));
+	}
+
+	@Test
+	void defaultsVariantPublicationModule() {
+		subject.rootPublication(it -> it.setModule("my-app"));
+		Provider<String> module = subject.getVariantPublications().register("debug").map(IvyPublication::getModule);
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat(module, providerOf("my-app_debug"));
+	}
+
+	@Test
+	void defaultsVariantPublicationOrganization() {
+		subject.rootPublication(it -> it.setOrganisation("com.example"));
+		Provider<String> module = subject.getVariantPublications().register("debug").map(IvyPublication::getOrganisation);
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat(module, providerOf("com.example"));
+	}
+
+	@Test
+	void defaultsPlatformsToVariantPublications() {
+		subject.rootPublication(it -> it.setModule("my-lib"));
+		subject.getVariantPublications().register("debug");
+		subject.getVariantPublications().register("release");
+		assertThat(subject.getPlatforms(), providerOf(contains("my-lib_debug", "my-lib_release")));
 	}
 }
