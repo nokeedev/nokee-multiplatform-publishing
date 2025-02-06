@@ -1,0 +1,37 @@
+plugins {
+	id 'java-gradle-plugin'
+	id 'jvm-test-suite'
+	id 'nokeebuild.use-junit-platform-in-test-suites'
+	id 'nokeebuild.use-latest-java-lts-in-test-suites'
+}
+
+group = 'dev.nokee'
+version = '1.0-SNAPSHOT'
+description = 'Unified publishing for multiplatform projects.'
+
+repositories {
+	mavenCentral()
+}
+
+gradlePlugin {
+	plugins {
+		multiplatformPublishing {
+			id = 'dev.nokee.multiplatform-publishing'
+			implementationClass = 'dev.nokee.publishing.multiplatform.MultiplatformPublishingPlugin'
+		}
+	}
+
+	dependencies {
+		implementation 'dev.nokee.commons:commons-names:latest.release'
+	}
+}
+
+testing {
+	suites {
+		test {
+			dependencies {
+				implementation 'dev.nokee.commons:commons-hamcrest'
+			}
+		}
+	}
+}
