@@ -5,7 +5,9 @@ package dev.nokee.publishing.multiplatform.fixtures;
  */
 public interface MavenRepository extends Repository {
 	@Override
-	MavenModule module(String groupId, String artifactId);
+	default MavenModule module(String groupId, String artifactId) {
+		return module(groupId, artifactId, "1.0");
+	}
 
 	@Override
 	MavenModule module(String groupId, String artifactId, String version);

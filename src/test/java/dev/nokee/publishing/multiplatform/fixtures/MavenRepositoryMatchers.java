@@ -3,6 +3,7 @@ package dev.nokee.publishing.multiplatform.fixtures;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import dev.gradleplugins.grava.publish.metadata.GradleModuleMetadata;
+import org.gradle.api.publish.maven.MavenArtifact;
 import org.hamcrest.FeatureMatcher;
 import org.hamcrest.Matcher;
 
@@ -44,7 +45,12 @@ public class MavenRepositoryMatchers {
 		return new FeatureMatcher<T, GradleModuleMetadata>(matcher, "", "") {
 			@Override
 			protected GradleModuleMetadata featureValueOf(T actual) {
-				Path file = Path.of(actual.artifact(Map.of("type", "module")).getUri());
+				Path file = null;
+				if (actual instanceof MavenModule) {
+					file = Path.of(((MavenModule) actual).getModuleMetadata().getUri());
+				} else if (actual instanceof IvyModule) {
+					file = Path.of(((IvyModule) actual).getModuleMetadata().getUri());
+				}
 				try (GradleModuleMetadataReader reader = new GradleModuleMetadataReader(Files.newBufferedReader(file))) {
 					return reader.read();
 				} catch (IOException e) {
