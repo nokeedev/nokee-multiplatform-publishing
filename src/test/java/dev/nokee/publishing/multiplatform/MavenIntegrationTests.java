@@ -66,9 +66,20 @@ class MavenIntegrationTests {
 	@Test
 	void defaultsVariantPublicationArtifactId() {
 		subject.rootPublication(it -> it.setArtifactId("my-app"));
-		Provider<String> artifactId = subject.getVariantPublications().register("debug").map(MavenPublication::getArtifactId);
+		MavenPublication variantPublication = subject.getVariantPublications().register("debug").get();
 		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
-		assertThat(artifactId, providerOf("my-app_debug"));
+		assertThat("required by Gradle when multiple publications", variantPublication.getArtifactId(), equalTo("my-app"));
+		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(variantPublication), equalTo("my-app_debug"));
+	}
+
+	@Test
+	void canOverrideVariantPublicationArtifactId() {
+		subject.rootPublication(it -> it.setArtifactId("my-app"));
+		MavenPublication variantPublication = subject.getVariantPublications().register("debug").get();
+		variantPublication.setArtifactId("myAppDebug");
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat("required by Gradle when multiple publications", variantPublication.getArtifactId(), equalTo("my-app"));
+		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(variantPublication), equalTo("myAppDebug"));
 	}
 
 	@Test

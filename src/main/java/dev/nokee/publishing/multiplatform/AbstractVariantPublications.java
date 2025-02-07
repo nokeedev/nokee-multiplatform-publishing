@@ -90,8 +90,8 @@ class AbstractVariantPublications<T extends Publication> implements VariantPubli
 		}
 
 		public void now() {
-			for (Runnable action : actions) {
-				action.run();
+			while (!actions.isEmpty()) {
+				actions.remove(0).run();
 			}
 		}
 	}

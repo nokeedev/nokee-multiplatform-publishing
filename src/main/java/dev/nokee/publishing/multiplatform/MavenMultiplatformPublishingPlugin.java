@@ -6,11 +6,16 @@ import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import org.codehaus.groovy.runtime.StringGroovyMethods;
 import org.gradle.api.*;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.maven.MavenPublication;
 
 import javax.inject.Inject;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static dev.nokee.commons.provider.CollectionElementTransformer.transformEach;
 
@@ -32,28 +37,44 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		});
 
 		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
+			publication.getVariantPublications().configureEach(variantPublication -> {
+				publication.variantArtifactIds.put(variantPublication, variantPublication.getArtifactId());
+			});
 			publication.getVariantPublications().whenElementFinalized(variantPublication -> {
-				final String variantName = StringGroovyMethods.uncapitalize(variantPublication.getName().substring(publication.getName().length()));
-				variantPublication.setArtifactId(publication.getRootPublication().get().getArtifactId() + "_" + variantName);
+				publication.variantArtifactIds.compute(variantPublication, (k, v) -> {
+					assert v != null;
+					// no change, use default value
+					if (v.equals(k.getArtifactId())) {
+						final String variantName = StringGroovyMethods.uncapitalize(variantPublication.getName().substring(publication.getName().length()));
+						return publication.getRootPublication().get().getArtifactId() + "_" + variantName;
+					}
+					return k.getArtifactId(); // use overwritten value
+				});
+
+				variantPublication.setArtifactId(publication.getRootPublication().get().getArtifactId());
 				variantPublication.setGroupId(publication.getRootPublication().get().getGroupId());
 			});
-		});
-
-		extension.getPublications().withType(MavenMultiplatformPublication.class).configureEach(publication -> {
-			publication.getPlatforms().set(publication.getVariantPublications().getElements().map(transformEach(MavenPublication::getArtifactId)));
+			publication.getPlatforms().set(publication.getVariantPublications().getElements().map(transformEach(publication.variantArtifactIds::get)));
 		});
 	}
 
-	/*private*/ static abstract /*final*/ class DefaultPublication implements MavenMultiplatformPublication {
+	/*private*/ static abstract /*final*/ class DefaultPublication implements MavenMultiplatformPublication, MultiplatformPublicationInternal {
 		private final Names names;
 		private final NamedDomainObjectProvider<MavenPublication> rootPublication;
 		private final DefaultVariantPublications variantPublications;
+		private final Map<MavenPublication, String> variantArtifactIds = new HashMap<>();
 
 		@Inject
 		public DefaultPublication(Names names, NamedDomainObjectProvider<MavenPublication> rootPublication, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ObjectFactory objects) {
 			this.names = names;
 			this.rootPublication = rootPublication;
 			this.variantPublications = objects.newInstance(DefaultVariantPublications.class, names, registry, collection);
+		}
+
+		@Override
+		public String moduleNameOf(Publication variantPublication) {
+			assert variantPublication instanceof MavenPublication;
+			return variantArtifactIds.get(variantPublication);
 		}
 
 		@Override

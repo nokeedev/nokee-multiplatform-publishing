@@ -8,6 +8,7 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
+import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,9 +67,20 @@ class IvyIntegrationTests {
 	@Test
 	void defaultsVariantPublicationModule() {
 		subject.rootPublication(it -> it.setModule("my-app"));
-		Provider<String> module = subject.getVariantPublications().register("debug").map(IvyPublication::getModule);
+		IvyPublication variantPublication = subject.getVariantPublications().register("debug").get();
 		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
-		assertThat(module, providerOf("my-app_debug"));
+		assertThat("required by Gradle when multiple publications", variantPublication.getModule(), equalTo("my-app"));
+		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(variantPublication), equalTo("my-app_debug"));
+	}
+
+	@Test
+	void canOverrideVariantPublicationArtifactId() {
+		subject.rootPublication(it -> it.setModule("my-app"));
+		IvyPublication variantPublication = subject.getVariantPublications().register("debug").get();
+		variantPublication.setModule("myAppDebug");
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat("required by Gradle when multiple publications", variantPublication.getModule(), equalTo("my-app"));
+		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(variantPublication), equalTo("myAppDebug"));
 	}
 
 	@Test
