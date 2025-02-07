@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-class AbstractVariantPublications<T extends Publication> implements VariantPublicationsInternal, View<T> {
+class AbstractPlatformPublications<T extends Publication> implements PlatformPublicationsInternal, View<T> {
 	private final Class<T> elementType;
 	private final NamedDomainObjectCollection<T> collection;
 	private final ProviderFactory providers;
@@ -26,7 +26,7 @@ class AbstractVariantPublications<T extends Publication> implements VariantPubli
 	private final Set<String> knownElements = new LinkedHashSet<>();
 	private final Finalizer finalizer;
 
-	protected AbstractVariantPublications(Class<T> elementType, NamedDomainObjectCollection<T> collection, Finalizer finalizer, ProviderFactory providers, ObjectFactory objects) {
+	protected AbstractPlatformPublications(Class<T> elementType, NamedDomainObjectCollection<T> collection, Finalizer finalizer, ProviderFactory providers, ObjectFactory objects) {
 		this.elementType = elementType;
 		this.collection = collection;
 		this.finalizer = finalizer;

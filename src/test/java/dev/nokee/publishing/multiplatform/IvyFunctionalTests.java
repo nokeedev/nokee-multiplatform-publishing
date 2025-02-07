@@ -102,8 +102,8 @@ class IvyFunctionalTests {
 					organisation = 'com.example'
 					revision = '1.0'
 				}
-				variantPublications.register('debug') { from components.cppDebug }
-				variantPublications.register('release') { from components.cppRelease }
+				platformPublications.register('debug') { from components.cppDebug }
+				platformPublications.register('release') { from components.cppRelease }
 			}
 
 			publishing {
@@ -154,7 +154,7 @@ class IvyFunctionalTests {
         }
 
         @Test
-		void variantPublicationsHasCorrectModuleMetadataComponentModule() {
+		void platformPublicationsHasCorrectModuleMetadataComponentModule() {
 			assertThat(repository.module("com.example", "test-project_debug"),
 				has(moduleMetadata(with(component(module(equalTo("test-project_debug")))))));
 			assertThat(repository.module("com.example", "test-project_release"),

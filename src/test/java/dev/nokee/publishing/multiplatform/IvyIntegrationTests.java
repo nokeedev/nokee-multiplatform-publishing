@@ -8,7 +8,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
-import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,50 +59,50 @@ class IvyIntegrationTests {
 	}
 
 	@Test
-	void canRegisterVariantPublications() {
-		assertThat(subject.getVariantPublications().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(IvyPublication.class))));
+	void canRegisterPlatformPublications() {
+		assertThat(subject.getPlatformPublication().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(IvyPublication.class))));
 	}
 
 	@Test
-	void defaultsVariantPublicationModule() {
+	void defaultsPlatformPublicationModule() {
 		subject.rootPublication(it -> it.setModule("my-app"));
-		IvyPublication variantPublication = subject.getVariantPublications().register("debug").get();
-		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
-		assertThat("required by Gradle when multiple publications", variantPublication.getModule(), equalTo("my-app"));
-		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(variantPublication), equalTo("my-app_debug"));
+		IvyPublication platformPublication = subject.getPlatformPublication().register("debug").get();
+		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
+		assertThat("required by Gradle when multiple publications", platformPublication.getModule(), equalTo("my-app"));
+		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("my-app_debug"));
 	}
 
 	@Test
-	void canOverrideVariantPublicationArtifactId() {
+	void canOverridePlatformPublicationArtifactId() {
 		subject.rootPublication(it -> it.setModule("my-app"));
-		IvyPublication variantPublication = subject.getVariantPublications().register("debug").get();
-		variantPublication.setModule("myAppDebug");
-		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
-		assertThat("required by Gradle when multiple publications", variantPublication.getModule(), equalTo("my-app"));
-		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(variantPublication), equalTo("myAppDebug"));
+		IvyPublication platformPublication = subject.getPlatformPublication().register("debug").get();
+		platformPublication.setModule("myAppDebug");
+		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
+		assertThat("required by Gradle when multiple publications", platformPublication.getModule(), equalTo("my-app"));
+		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("myAppDebug"));
 	}
 
 	@Test
-	void defaultsVariantPublicationOrganization() {
+	void defaultsPlatformPublicationOrganization() {
 		subject.rootPublication(it -> it.setOrganisation("com.example"));
-		Provider<String> organization = subject.getVariantPublications().register("debug").map(IvyPublication::getOrganisation);
-		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		Provider<String> organization = subject.getPlatformPublication().register("debug").map(IvyPublication::getOrganisation);
+		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
 		assertThat(organization, providerOf("com.example"));
 	}
 
 	@Test
-	void defaultsVariantPublicationRevision() {
+	void defaultsPlatformPublicationRevision() {
 		subject.rootPublication(it -> it.setRevision("1.2"));
-		Provider<String> revision = subject.getVariantPublications().register("debug").map(IvyPublication::getRevision);
-		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		Provider<String> revision = subject.getPlatformPublication().register("debug").map(IvyPublication::getRevision);
+		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
 		assertThat(revision, providerOf("1.2"));
 	}
 
 	@Test
-	void defaultsPlatformsToVariantPublications() {
+	void defaultsPlatformsToPlatformPublications() {
 		subject.rootPublication(it -> it.setModule("my-lib"));
-		subject.getVariantPublications().register("debug");
-		subject.getVariantPublications().register("release");
+		subject.getPlatformPublication().register("debug");
+		subject.getPlatformPublication().register("release");
 		assertThat(subject.getPlatforms(), providerOf(contains("my-lib_debug", "my-lib_release")));
 	}
 }

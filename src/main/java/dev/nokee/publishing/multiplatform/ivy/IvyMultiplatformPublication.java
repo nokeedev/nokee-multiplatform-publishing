@@ -11,9 +11,9 @@ public interface IvyMultiplatformPublication extends MultiplatformPublication, P
 	void rootPublication(Action<? super IvyPublication> configureAction);
 	NamedDomainObjectProvider<IvyPublication> getRootPublication();
 
-	VariantPublications getVariantPublications();
+	PlatformPublications getPlatformPublication();
 
-	interface VariantPublications extends View<IvyPublication> {
+	interface PlatformPublications extends View<IvyPublication> {
 		NamedDomainObjectProvider<IvyPublication> register(String name);
 		NamedDomainObjectProvider<IvyPublication> register(String name, Action<? super IvyPublication> configureAction);
 	}
