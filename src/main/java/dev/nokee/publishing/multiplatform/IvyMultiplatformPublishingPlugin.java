@@ -48,8 +48,10 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 					}
 					return k.getModule(); // use overwritten value
 				});
+
 				variantPublication.setModule(publication.getRootPublication().get().getModule());
 				variantPublication.setOrganisation(publication.getRootPublication().get().getOrganisation());
+				variantPublication.setRevision(publication.getRootPublication().get().getRevision());
 			});
 			publication.getPlatforms().set(publication.getVariantPublications().getElements().map(transformEach(publication.variantModules::get)));
 		});
@@ -108,6 +110,13 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 			@Override
 			public NamedDomainObjectProvider<IvyPublication> register(String name) {
 				return register(names.append(name), registry::register);
+			}
+
+			@Override
+			public NamedDomainObjectProvider<IvyPublication> register(String name, Action<? super IvyPublication> configureAction) {
+				NamedDomainObjectProvider<IvyPublication> result = register(names.append(name), registry::register);
+				result.configure(configureAction);
+				return result;
 			}
 		}
 	}

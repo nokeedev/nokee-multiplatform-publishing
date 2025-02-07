@@ -15,13 +15,17 @@ import javax.inject.Inject;
 	public void apply(Project project) {
 		project.getPluginManager().apply(PublishingPlugin.class); // because we are a publishing plugin
 
-		project.getExtensions().create("multiplatform", MultiplatformPublishingExtension.class);
+		MultiplatformPublishingExtension extension = project.getExtensions().create("multiplatform", MultiplatformPublishingExtension.class);
 
 		project.getPluginManager().withPlugin("maven-publish", ignored(() -> {
 			project.getPluginManager().apply(MavenMultiplatformPublishingPlugin.class);
 		}));
 		project.getPluginManager().withPlugin("ivy-publish", ignored(() -> {
 			project.getPluginManager().apply(IvyMultiplatformPublishingPlugin.class);
+		}));
+
+		project.afterEvaluate(ignored(() -> {
+			extension.getPublications().all(ignored(() -> {}));
 		}));
 	}
 

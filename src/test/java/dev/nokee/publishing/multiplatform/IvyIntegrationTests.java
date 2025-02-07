@@ -86,9 +86,17 @@ class IvyIntegrationTests {
 	@Test
 	void defaultsVariantPublicationOrganization() {
 		subject.rootPublication(it -> it.setOrganisation("com.example"));
-		Provider<String> module = subject.getVariantPublications().register("debug").map(IvyPublication::getOrganisation);
+		Provider<String> organization = subject.getVariantPublications().register("debug").map(IvyPublication::getOrganisation);
 		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
-		assertThat(module, providerOf("com.example"));
+		assertThat(organization, providerOf("com.example"));
+	}
+
+	@Test
+	void defaultsVariantPublicationRevision() {
+		subject.rootPublication(it -> it.setRevision("1.2"));
+		Provider<String> revision = subject.getVariantPublications().register("debug").map(IvyPublication::getRevision);
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat(revision, providerOf("1.2"));
 	}
 
 	@Test

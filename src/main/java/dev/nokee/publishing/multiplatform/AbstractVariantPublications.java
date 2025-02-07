@@ -2,7 +2,9 @@ package dev.nokee.publishing.multiplatform;
 
 import dev.nokee.commons.names.FullyQualifiedName;
 import dev.nokee.platform.base.View;
-import org.gradle.api.*;
+import org.gradle.api.Action;
+import org.gradle.api.NamedDomainObjectCollection;
+import org.gradle.api.Project;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
@@ -85,8 +87,9 @@ class AbstractVariantPublications<T extends Publication> implements VariantPubli
 		}
 
 		public void whenFinalizing(Runnable action) {
+			action = once(action);
 			actions.add(action);
-			project.afterEvaluate(ignored(once(action)));
+			project.afterEvaluate(ignored(action));
 		}
 
 		public void now() {

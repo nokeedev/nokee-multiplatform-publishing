@@ -7,6 +7,7 @@ import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
+import org.gradle.api.publish.ivy.IvyPublication;
 import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,6 +89,14 @@ class MavenIntegrationTests {
 		Provider<String> module = subject.getVariantPublications().register("debug").map(MavenPublication::getGroupId);
 		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
 		assertThat(module, providerOf("com.example"));
+	}
+
+	@Test
+	void defaultsVariantPublicationVersion() {
+		subject.rootPublication(it -> it.setVersion("1.2"));
+		Provider<String> version = subject.getVariantPublications().register("debug").map(MavenPublication::getVersion);
+		((VariantPublicationsInternal) subject.getVariantPublications()).finalizeNow();
+		assertThat(version, providerOf("1.2"));
 	}
 
 	@Test

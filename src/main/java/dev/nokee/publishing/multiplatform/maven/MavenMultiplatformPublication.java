@@ -18,5 +18,6 @@ public interface MavenMultiplatformPublication extends MultiplatformPublication,
 
 	interface VariantPublications extends View<MavenPublication> {
 		NamedDomainObjectProvider<MavenPublication> register(String name);
+		NamedDomainObjectProvider<MavenPublication> register(String name, Action<? super MavenPublication> configureAction);
 	}
 }

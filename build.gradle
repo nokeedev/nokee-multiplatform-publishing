@@ -37,6 +37,8 @@ testing {
 				implementation 'dev.gradleplugins:gradle-runner-kit:latest.release'
 				implementation 'dev.nokee.commons:test-gradle-projects:latest.release'
 				implementation libs.mockito.core
+				implementation 'dev.gradleplugins:grava-publish:1.7' // GradleModuleMetadata
+				implementation 'com.google.code.gson:gson:2.12.1' // "GradleModuleMetadataReader"
 			}
 		}
 	}
