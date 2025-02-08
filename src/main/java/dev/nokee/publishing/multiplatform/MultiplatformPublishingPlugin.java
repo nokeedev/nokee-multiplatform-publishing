@@ -14,6 +14,7 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.publish.Publication;
+import org.gradle.api.publish.PublicationContainer;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
 import org.gradle.api.publish.ivy.tasks.GenerateIvyDescriptor;
@@ -214,7 +215,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 		extension.getPublications().withType(new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(project.getObjects().newInstance(AbstractMultiplatformPublicationAction.class, project.getResources()));
 
 
-		project.getExtensions().getExtraProperties().set("forMultiplatform", project.getObjects().newInstance(ForMultiplatformClosure.class, extension));
+		project.getExtensions().getExtraProperties().set("forMultiplatform", project.getObjects().newInstance(Closure.class, extension));
 
 		project.afterEvaluate(ignored(() -> {
 			extension.getPublications().all(ignored(() -> {}));
@@ -379,6 +380,54 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 					}
 				};
 			}
+		}
+	}
+
+	/*private*/ abstract static /*final*/ class Closure implements ForMultiplatformClosure {
+		private final MultiplatformPublishingExtension multiplatform;
+
+		@Inject
+		public Closure(MultiplatformPublishingExtension multiplatform) {
+			this.multiplatform = multiplatform;
+		}
+
+		@Override
+		public <T extends Publication> Action<PublicationContainer> call(String name, Class<T> type) {
+			return call(name, type, ignored(() -> {}));
+		}
+
+		@Override
+		public <T extends Publication> Action<PublicationContainer> call(String name, Class<T> type, Action<? super MultiplatformPublication<T>> configureAction) {
+			return publications -> {
+				final Class<? extends MultiplatformPublication<T>> implementationType = implementationType(type);
+
+				if (!multiplatform.getPublications().getNames().contains(name)) {
+					multiplatform.getPublications().register(name, implementationType);
+				}
+
+				multiplatform.getPublications().named(name, implementationType, configureAction);
+			};
+		}
+
+		@SuppressWarnings({"unchecked", "rawtypes"})
+		private <T extends Publication> Class<? extends MultiplatformPublication<T>> implementationType(Class<? extends Publication> type) {
+			if (type.equals(MavenPublication.class)) {
+				return (Class) MavenMultiplatformPublication.class;
+			} else if (type.equals(IvyPublication.class)) {
+				return (Class) IvyMultiplatformPublication.class;
+			} else {
+				throw new UnsupportedOperationException("Unsupported publication type");
+			}
+		}
+
+		// TODO: Move to nokee-commons
+		private static <T> Action<T> ignored(Runnable runnable) {
+			return new Action<T>() {
+				@Override
+				public void execute(T ignored) {
+					runnable.run();
+				}
+			};
 		}
 	}
 }

@@ -3,96 +3,39 @@ package dev.nokee.publishing.multiplatform;
 import org.gradle.api.Action;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublicationContainer;
-import org.gradle.api.publish.ivy.IvyPublication;
-import org.gradle.api.publish.maven.MavenPublication;
 
-import javax.inject.Inject;
+/**
+ * Represents the {@literal forMultiplatform} closure configured by {@literal dev.nokee.multiplatform-publishing} plugin.
+ *
+ * <pre>
+ * <code>
+ * publishing {
+ *     publications forMultiplatform('cpp', MavenPublication) {
+ *         // ...
+ *     }
+ * }
+ * </code>
+ * </pre>
+ */
+public interface ForMultiplatformClosure {
+	/**
+	 * Returns a configure action that register a multiplatform publication if absent.
+	 *
+	 * @param name  the multiplatform publication name
+	 * @param type  the multiplatform publication type
+	 * @return a configure action to use with {@link org.gradle.api.publish.PublishingExtension#publications(Action)}.
+	 * @param <PublicationType>  the publication type
+	 */
+	<PublicationType extends Publication> Action<PublicationContainer> call(String name, Class<PublicationType> type);
 
-abstract /*final*/ class ForMultiplatformClosure {
-	private final MultiplatformPublishingExtension multiplatform;
-
-	@Inject
-	public ForMultiplatformClosure(MultiplatformPublishingExtension multiplatform) {
-		this.multiplatform = multiplatform;
-	}
-
-	public <T extends Publication> Action<PublicationContainer> call(String name, Class<T> type) {
-		return call(name, type, ignored(() -> {}));
-	}
-
-	public <T extends Publication> Action<PublicationContainer> call(String name, Class<T> type, Action<? super MultiplatformPublication<T>> configureAction) {
-		return publications -> {
-			final Class<? extends MultiplatformPublication<T>> implementationType = implementationType(type);
-
-			if (!multiplatform.getPublications().getNames().contains(name)) {
-				multiplatform.getPublications().register(name, implementationType);
-			}
-
-			multiplatform.getPublications().named(name, implementationType, configureAction);
-		};
-	}
-
-	@SuppressWarnings("unchecked")
-	private <T extends Publication> Class<? extends MultiplatformPublication<T>> implementationType(Class<? extends Publication> type) {
-		if (type.equals(MavenPublication.class)) {
-			return (Class) MavenMultiplatformPublication.class;
-		} else if (type.equals(IvyPublication.class)) {
-			return (Class) IvyMultiplatformPublication.class;
-		} else {
-			throw new UnsupportedOperationException("Unsupported publication type");
-		}
-	}
-
-//	public <T extends Publication> Action<PublicationContainer> call(AdhocComponentWithVariants mainComponent, Class<T> type) {
-//		return call(mainComponent, type, ignored(() -> {}));
-//	}
-//
-//	public <T extends Publication> Action<PublicationContainer> call(AdhocComponentWithVariants mainComponent, Class<T> type, Action<? super Multiplatform<T>> action) {
-//		return call(mainComponent.getName(), type, o -> {
-//			o.from(mainComponent);
-//			o.getRootPublication().configure(it -> {
-//				if (it instanceof MavenPublication) {
-//					((MavenPublication) it).setArtifactId(project.getName());
-//					((MavenPublication) it).suppressAllPomMetadataWarnings();
-//				} else if (it instanceof IvyPublication) {
-//					((IvyPublication) it).setModule(project.getName());
-//					((IvyPublication) it).suppressAllIvyMetadataWarnings();
-//				}
-//			});
-//
-//			// TODO: Match cpp[CapitalLetter] as we assume cpp as prefix delimited by CamelCase
-//			DomainObjectCollection<AdhocComponentWithVariants> variantComponents = project.getComponents().withType(AdhocComponentWithVariants.class).matching(it -> it.getName().startsWith(mainComponent.getName()) && !it.getName().equals(mainComponent.getName()));
-//
-//			variantComponents.all(component -> {
-//				o.getVariantPublications().register(component.getName().substring(mainComponent.getName().length()), it -> {
-//					if (it instanceof MavenPublication) {
-//						((MavenPublication) it).from(component);
-//						((MavenPublication) it).setArtifactId(project.getName() + "_" + uncapitalize(component.getName().substring(mainComponent.getName().length())));
-//						((MavenPublication) it).suppressAllPomMetadataWarnings();
-//
-//						// TODO: Use "public api" for this internal API
-//						((MavenPublicationInternal) it).publishWithOriginalFileName();
-//					} else if (it instanceof IvyPublication) {
-//						((IvyPublication) it).from(component);
-//						((IvyPublication) it).setModule(project.getName() + "_" + uncapitalize(component.getName().substring(mainComponent.getName().length())));
-//						((IvyPublication) it).suppressAllIvyMetadataWarnings();
-//
-//						// TODO: Approximate the publishWithOriginalFileName API
-//					}
-//				});
-//			});
-//
-//			action.execute(o);
-//		});
-//	}
-
-	// TODO: Move to nokee-commons
-	private static <T> Action<T> ignored(Runnable runnable) {
-		return new Action<T>() {
-			@Override
-			public void execute(T ignored) {
-				runnable.run();
-			}
-		};
-	}
+	/**
+	 * Returns a configure action that register a multiplatform publication if absent and configure it.
+	 *
+	 * @param name  the multiplatform publication name
+	 * @param type  the multiplatform publication type
+	 * @param configureAction  the configure action for the multiplatform publication
+	 * @return a configure action to use with {@link org.gradle.api.publish.PublishingExtension#publications(Action)}.
+	 * @param <PublicationType>  the publication type
+	 */
+	<PublicationType extends Publication> Action<PublicationContainer> call(String name, Class<PublicationType> type, Action<? super MultiplatformPublication<PublicationType>> configureAction);
 }

@@ -3,6 +3,7 @@ plugins {
 	id 'jvm-test-suite'
 	id 'nokeebuild.use-junit-platform-in-test-suites'
 	id 'nokeebuild.use-latest-java-lts-in-test-suites'
+	id 'org.jetbrains.kotlin.jvm' version '2.0.21'
 }
 
 group = 'dev.nokee'

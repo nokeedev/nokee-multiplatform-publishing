@@ -106,7 +106,7 @@ class IvyFunctionalTests {
 					ivy { url 'repo' }
 				}
 			}
-			"""));
+		"""));
 		build.file("cpp-api-headers.zip");
 		build.file("debug/libfoo.so");
 		build.file("release/libfoo.so");

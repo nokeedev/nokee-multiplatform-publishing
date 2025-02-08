@@ -37,7 +37,21 @@ public interface MultiplatformPublication<PublicationType extends Publication> e
 	 * @param <PlatformPublicationType>  the publication type for each platform
 	 */
 	interface PlatformPublications<PlatformPublicationType extends Publication> extends View<PlatformPublicationType> {
+		/**
+		 * Registers platform publication owned by this multiplatform publication of the specified name.
+		 *
+		 * @param name  the name of the publication
+		 * @return a provider to registered platform publication
+		 */
 		NamedDomainObjectProvider<PlatformPublicationType> register(String name);
+
+		/**
+		 * Registers platform publication owned by this multiplatform publication of the specified name and configures it.
+		 *
+		 * @param name  the name of the publication
+		 * @param configureAction  the configure action for the registered publication
+		 * @return a provider to registered platform publication
+		 */
 		NamedDomainObjectProvider<PlatformPublicationType> register(String name, Action<? super PlatformPublicationType> configureAction);
 	}
 }

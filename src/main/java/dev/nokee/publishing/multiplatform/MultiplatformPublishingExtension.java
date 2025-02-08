@@ -6,7 +6,7 @@ import org.gradle.api.publish.Publication;
 /**
  * Represents the configuration of how to “publish” the multiplatform components of a project.
  */
-public interface MultiplatformPublishingExtension {
+interface MultiplatformPublishingExtension {
 	/**
 	 * {@return the multiplatform publications}
 	 */
