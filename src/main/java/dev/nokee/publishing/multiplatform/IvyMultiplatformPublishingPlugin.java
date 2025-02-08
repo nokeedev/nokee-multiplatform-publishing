@@ -214,14 +214,12 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 	}
 
 	/*private*/ static abstract /*final*/ class DefaultPublication extends AbstractMultiplatformPublication<IvyPublication> implements IvyMultiplatformPublication, MultiplatformPublicationInternal {
-		private final NamedDomainObjectProvider<IvyPublication> bridgePublication;
 		private final DefaultPlatformPublications platformPublications;
 		private final Map<IvyPublication, String> variantModules = new HashMap<>();
 
 		@Inject
 		public DefaultPublication(Names names, NamedDomainObjectProvider<IvyPublication> bridgePublication, NamedDomainObjectRegistry<IvyPublication> registry, NamedDomainObjectCollection<IvyPublication> collection, ObjectFactory objects) {
-			super(names.toString());
-			this.bridgePublication = bridgePublication;
+			super(names.toString(), bridgePublication);
 			this.platformPublications = objects.newInstance(DefaultPlatformPublications.class, names, registry, collection);
 		}
 
@@ -234,11 +232,6 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 		@Override
 		public DefaultPlatformPublications getPlatformPublications() {
 			return platformPublications;
-		}
-
-		@Override
-		public NamedDomainObjectProvider<IvyPublication> getBridgePublication() {
-			return bridgePublication;
 		}
 
 		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends AbstractPlatformPublications<IvyPublication> implements PlatformPublications<IvyPublication> {
