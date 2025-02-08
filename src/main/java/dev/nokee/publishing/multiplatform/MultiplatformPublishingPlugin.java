@@ -202,6 +202,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 		extension.getPublications().withType(new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(project.getObjects().newInstance(AbstractMultiplatformPublicationAction.class, project.getResources()));
 
 
+		project.getExtensions().getExtraProperties().set("forMultiplatform", project.getObjects().newInstance(ForMultiplatformClosure.class, extension));
 
 		project.afterEvaluate(ignored(() -> {
 			extension.getPublications().all(ignored(() -> {}));

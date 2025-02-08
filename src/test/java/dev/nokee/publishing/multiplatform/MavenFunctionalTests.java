@@ -97,17 +97,16 @@ class MavenFunctionalTests {
 				}
 			}.get()) {}
 
-			multiplatform.publications.register('cpp', MavenMultiplatformPublication) {
-				bridgePublication {
-					from components.cpp
-					groupId = 'com.example'
-					version = '1.0'
-				}
-				platformPublications.register('debug') { from components.cppDebug }
-				platformPublications.register('release') { from components.cppRelease }
-			}
-
 			publishing {
+				publications(forMultiplatform('cpp', MavenPublication) {
+					bridgePublication {
+						from components.cpp
+						groupId = 'com.example'
+						version = '1.0'
+					}
+					platformPublications.register('debug') { from components.cppDebug }
+					platformPublications.register('release') { from components.cppRelease }
+				})
 				repositories {
 					maven { url 'repo' }
 				}

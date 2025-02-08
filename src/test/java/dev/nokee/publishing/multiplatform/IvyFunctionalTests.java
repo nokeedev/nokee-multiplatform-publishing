@@ -96,17 +96,16 @@ class IvyFunctionalTests {
 				}
 			}.get()) {}
 
-			multiplatform.publications.register('cpp', IvyMultiplatformPublication) {
-				bridgePublication {
-					from components.cpp
-					organisation = 'com.example'
-					revision = '1.0'
-				}
-				platformPublications.register('debug') { from components.cppDebug }
-				platformPublications.register('release') { from components.cppRelease }
-			}
-
 			publishing {
+				publications(forMultiplatform('cpp', IvyPublication) {
+					bridgePublication {
+						from components.cpp
+						organisation = 'com.example'
+						revision = '1.0'
+					}
+					platformPublications.register('debug') { from components.cppDebug }
+					platformPublications.register('release') { from components.cppRelease }
+				})
 				repositories {
 					ivy { url 'repo' }
 				}
