@@ -97,7 +97,7 @@ class MavenFunctionalTests {
 			}.get()) {}
 
 			multiplatform.publications.register('cpp', MavenMultiplatformPublication) {
-				rootPublication {
+				bridgePublication {
 					from components.cpp
 					groupId = 'com.example'
 					version = '1.0'
@@ -148,7 +148,7 @@ class MavenFunctionalTests {
 		}
 
 		@Test
-		void rootPublicationHasRemoveVariants() {
+		void bridgePublicationHasRemoveVariants() {
 			assertThat(repository.module("com.example", "test-project"),
 				has(moduleMetadata(with(remoteVariants(contains(named("debugLinkElements"), named("releaseLinkElements")))))));
 		}

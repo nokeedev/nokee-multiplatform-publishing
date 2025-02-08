@@ -38,20 +38,20 @@ class MavenIntegrationTests {
 	}
 
 	@Test
-	void createsRootPublication() {
+	void createsBridgePublication() {
 		assertThat(publications.named("test"), providerOf(allOf(named("test"), instanceOf(MavenPublication.class))));
 	}
 
 	@Test
-	void canAccessRootPublication() {
-		assertThat(subject.getRootPublication(), providerOf(publications.getByName("test")));
+	void canAccessBridgePublication() {
+		assertThat(subject.getBridgePublication(), providerOf(publications.getByName("test")));
 	}
 
 	@Test
-	void canConfigureRootPublication() {
+	void canConfigureBridgePublication() {
 		Action<MavenPublication> action = Mockito.mock();
 
-		subject.rootPublication(action);
+		subject.bridgePublication(action);
 
 		ArgumentCaptor<MavenPublication> captor = ArgumentCaptor.captor();
 		Mockito.verify(action).execute(captor.capture());
@@ -60,49 +60,49 @@ class MavenIntegrationTests {
 
 	@Test
 	void canRegisterPlatformPublications() {
-		assertThat(subject.getPlatformPublication().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(MavenPublication.class))));
+		assertThat(subject.getPlatformPublications().register("debug"), providerOf(allOf(named("testDebug"), instanceOf(MavenPublication.class))));
 	}
 
 	@Test
 	void defaultsPlatformPublicationArtifactId() {
-		subject.rootPublication(it -> it.setArtifactId("my-app"));
-		MavenPublication platformPublication = subject.getPlatformPublication().register("debug").get();
-		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
+		subject.bridgePublication(it -> it.setArtifactId("my-app"));
+		MavenPublication platformPublication = subject.getPlatformPublications().register("debug").get();
+		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat("required by Gradle when multiple publications", platformPublication.getArtifactId(), equalTo("my-app"));
 		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("my-app_debug"));
 	}
 
 	@Test
 	void canOverridePlatformPublicationArtifactId() {
-		subject.rootPublication(it -> it.setArtifactId("my-app"));
-		MavenPublication platformPublication = subject.getPlatformPublication().register("debug").get();
+		subject.bridgePublication(it -> it.setArtifactId("my-app"));
+		MavenPublication platformPublication = subject.getPlatformPublications().register("debug").get();
 		platformPublication.setArtifactId("myAppDebug");
-		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
+		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat("required by Gradle when multiple publications", platformPublication.getArtifactId(), equalTo("my-app"));
 		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("myAppDebug"));
 	}
 
 	@Test
 	void defaultsPlatformPublicationGroup() {
-		subject.rootPublication(it -> it.setGroupId("com.example"));
-		Provider<String> module = subject.getPlatformPublication().register("debug").map(MavenPublication::getGroupId);
-		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
+		subject.bridgePublication(it -> it.setGroupId("com.example"));
+		Provider<String> module = subject.getPlatformPublications().register("debug").map(MavenPublication::getGroupId);
+		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat(module, providerOf("com.example"));
 	}
 
 	@Test
 	void defaultsPlatformPublicationVersion() {
-		subject.rootPublication(it -> it.setVersion("1.2"));
-		Provider<String> version = subject.getPlatformPublication().register("debug").map(MavenPublication::getVersion);
-		((PlatformPublicationsInternal) subject.getPlatformPublication()).finalizeNow();
+		subject.bridgePublication(it -> it.setVersion("1.2"));
+		Provider<String> version = subject.getPlatformPublications().register("debug").map(MavenPublication::getVersion);
+		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat(version, providerOf("1.2"));
 	}
 
 	@Test
 	void defaultsPlatformsToPlatformPublications() {
-		subject.rootPublication(it -> it.setArtifactId("my-lib"));
-		subject.getPlatformPublication().register("debug");
-		subject.getPlatformPublication().register("release");
+		subject.bridgePublication(it -> it.setArtifactId("my-lib"));
+		subject.getPlatformPublications().register("debug");
+		subject.getPlatformPublications().register("release");
 		assertThat(subject.getPlatforms(), providerOf(contains("my-lib_debug", "my-lib_release")));
 	}
 }

@@ -54,32 +54,32 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		MultiplatformPublishingExtension extension = project.getExtensions().getByType(MultiplatformPublishingExtension.class);
 		PublishingExtension publishing = project.getExtensions().getByType(PublishingExtension.class);
 		extension.getPublications().registerFactory(MavenMultiplatformPublication.class, name -> {
-			NamedDomainObjectProvider<MavenPublication> rootPublication = publishing.getPublications().register(name, MavenPublication.class);
-			return objects.newInstance(DefaultPublication.class, Names.of(name), rootPublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(MavenPublication.class)), publishing.getPublications().withType(MavenPublication.class));
+			NamedDomainObjectProvider<MavenPublication> bridgePublication = publishing.getPublications().register(name, MavenPublication.class);
+			return objects.newInstance(DefaultPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(MavenPublication.class)), publishing.getPublications().withType(MavenPublication.class));
 		});
 
 		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
-			publication.getPlatformPublication().configureEach(platformPublication -> {
+			publication.getPlatformPublications().configureEach(platformPublication -> {
 				publication.variantArtifactIds.put(platformPublication, platformPublication.getArtifactId());
 			});
-			publication.getPlatformPublication().whenElementFinalized(platformPublication -> {
+			publication.getPlatformPublications().whenElementFinalized(platformPublication -> {
 				publication.variantArtifactIds.compute(platformPublication, (k, v) -> {
 					assert v != null;
 					// no change, use default value
 					if (v.equals(k.getArtifactId())) {
 						final String variantName = StringGroovyMethods.uncapitalize(platformPublication.getName().substring(publication.getName().length()));
-						return publication.getRootPublication().get().getArtifactId() + "_" + variantName;
+						return publication.getBridgePublication().get().getArtifactId() + "_" + variantName;
 					}
 					return k.getArtifactId(); // use overwritten value
 				});
 
-				platformPublication.setArtifactId(publication.getRootPublication().get().getArtifactId());
-				platformPublication.setGroupId(publication.getRootPublication().get().getGroupId());
-				platformPublication.setVersion(publication.getRootPublication().get().getVersion());
+				platformPublication.setArtifactId(publication.getBridgePublication().get().getArtifactId());
+				platformPublication.setGroupId(publication.getBridgePublication().get().getGroupId());
+				platformPublication.setVersion(publication.getBridgePublication().get().getVersion());
 			});
-			publication.getPlatforms().set(publication.getPlatformPublication().getElements().map(transformEach(publication.variantArtifactIds::get)));
+			publication.getPlatforms().set(publication.getPlatformPublications().getElements().map(transformEach(publication.variantArtifactIds::get)));
 
-			publication.getPlatformPublication().configureEach(platformPublication -> {
+			publication.getPlatformPublications().configureEach(platformPublication -> {
 				// all generate metadata for variant
 				project.getTasks().named(generateMetadataFileTaskName(platformPublication), GenerateModuleMetadata.class).configure(task -> {
 					//   - doLast, override name to correct artifactId
@@ -119,7 +119,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 				}));
 			});
 
-			publication.getPlatformPublication().configureEach(publishTasks(tasks.withType(PublishToMavenRepository.class), task -> {
+			publication.getPlatformPublications().configureEach(publishTasks(tasks.withType(PublishToMavenRepository.class), task -> {
 				task.doFirst("", ignored(new Runnable() {
 					@Override
 					public void run() {
@@ -127,7 +127,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 					}
 				}));
 			}));
-			publication.getPlatformPublication().configureEach(publishTasks(tasks.withType(PublishToMavenLocal.class), task -> {
+			publication.getPlatformPublications().configureEach(publishTasks(tasks.withType(PublishToMavenLocal.class), task -> {
 				task.doFirst("", ignored(new Runnable() {
 					@Override
 					public void run() {
@@ -142,9 +142,9 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		// PUBLISH ROOT after variants
 		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
 			// Component publication must run after variant publications
-			publication.getRootPublication().configure(publishTasks(project.getTasks(), task -> {
+			publication.getBridgePublication().configure(publishTasks(project.getTasks(), task -> {
 				task.mustRunAfter((Callable<?>) () -> {
-					return publication.getPlatformPublication().getElements().get().stream().map(it -> task.getName().replace(capitalize(publication.getRootPublication().getName()), capitalize(it.getName()))).collect(Collectors.toList());
+					return publication.getPlatformPublications().getElements().get().stream().map(it -> task.getName().replace(capitalize(publication.getBridgePublication().getName()), capitalize(it.getName()))).collect(Collectors.toList());
 				});
 			}));
 		});
@@ -153,7 +153,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 
 		// Complete ROOT module metadata remote variants
 		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
-			publication.getRootPublication().configure(publishTasks(project.getTasks().withType(PublishToMavenRepository.class), task -> {
+			publication.getBridgePublication().configure(publishTasks(project.getTasks().withType(PublishToMavenRepository.class), task -> {
 				task.doFirst("", ignored(new Runnable() {
 					@Override
 					public void run() {
@@ -163,7 +163,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 							return (ExternalModuleDependency) project.getDependencies().create(groupId + ":" + it + ":" + version);
 						}).toList();
 
-						File moduleFile = project.getTasks().named(generateMetadataFileTaskName(publication.getRootPublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
+						File moduleFile = project.getTasks().named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
 						Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
 						List<Object> vars = (List<Object>) origRoot.get("variants");
 
@@ -225,14 +225,14 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 
 	/*private*/ static abstract /*final*/ class DefaultPublication implements MavenMultiplatformPublication, MultiplatformPublicationInternal {
 		private final Names names;
-		private final NamedDomainObjectProvider<MavenPublication> rootPublication;
+		private final NamedDomainObjectProvider<MavenPublication> bridgePublication;
 		private final DefaultPlatformPublications platformPublications;
 		private final Map<MavenPublication, String> variantArtifactIds = new LinkedHashMap<>();
 
 		@Inject
-		public DefaultPublication(Names names, NamedDomainObjectProvider<MavenPublication> rootPublication, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ObjectFactory objects) {
+		public DefaultPublication(Names names, NamedDomainObjectProvider<MavenPublication> bridgePublication, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ObjectFactory objects) {
 			this.names = names;
-			this.rootPublication = rootPublication;
+			this.bridgePublication = bridgePublication;
 			this.platformPublications = objects.newInstance(DefaultPlatformPublications.class, names, registry, collection);
 		}
 
@@ -243,18 +243,13 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		}
 
 		@Override
-		public DefaultPlatformPublications getPlatformPublication() {
+		public DefaultPlatformPublications getPlatformPublications() {
 			return platformPublications;
 		}
 
 		@Override
-		public void rootPublication(Action<? super MavenPublication> configureAction) {
-			rootPublication.configure(configureAction);
-		}
-
-		@Override
-		public NamedDomainObjectProvider<MavenPublication> getRootPublication() {
-			return rootPublication;
+		public NamedDomainObjectProvider<MavenPublication> getBridgePublication() {
+			return bridgePublication;
 		}
 
 		@Override
@@ -267,7 +262,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 			return "multiplatform Maven publication '" + getName() + "'";
 		}
 
-		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends AbstractPlatformPublications<MavenPublication> implements PlatformPublications {
+		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends AbstractPlatformPublications<MavenPublication> implements PlatformPublications<MavenPublication> {
 			private final Names names;
 			private final NamedDomainObjectRegistry<MavenPublication> registry;
 

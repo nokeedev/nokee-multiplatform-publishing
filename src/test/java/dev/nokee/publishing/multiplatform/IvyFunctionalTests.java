@@ -97,7 +97,7 @@ class IvyFunctionalTests {
 			}.get()) {}
 
 			multiplatform.publications.register('cpp', IvyMultiplatformPublication) {
-				rootPublication {
+				bridgePublication {
 					from components.cpp
 					organisation = 'com.example'
 					revision = '1.0'
@@ -148,7 +148,7 @@ class IvyFunctionalTests {
         }
 
         @Test
-        void rootPublicationHasRemoveVariants() {
+        void bridgePublicationHasRemoveVariants() {
             assertThat(repository.module("com.example", "test-project"),
 				has(moduleMetadata(with(remoteVariants(contains(named("debugLinkElements"), named("releaseLinkElements")))))));
         }

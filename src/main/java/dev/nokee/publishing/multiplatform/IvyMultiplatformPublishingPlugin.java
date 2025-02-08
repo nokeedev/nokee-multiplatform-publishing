@@ -54,33 +54,33 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 		MultiplatformPublishingExtension extension = project.getExtensions().getByType(MultiplatformPublishingExtension.class);
 		PublishingExtension publishing = project.getExtensions().getByType(PublishingExtension.class);
 		extension.getPublications().registerFactory(IvyMultiplatformPublication.class, name -> {
-			NamedDomainObjectProvider<IvyPublication> rootPublication = publishing.getPublications().register(name, IvyPublication.class);
-			return objects.newInstance(DefaultPublication.class, Names.of(name), rootPublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(IvyPublication.class)), publishing.getPublications().withType(IvyPublication.class));
+			NamedDomainObjectProvider<IvyPublication> bridgePublication = publishing.getPublications().register(name, IvyPublication.class);
+			return objects.newInstance(DefaultPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(IvyPublication.class)), publishing.getPublications().withType(IvyPublication.class));
 		});
 
 		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
-			publication.getPlatformPublication().configureEach(platformPublication -> {
+			publication.getPlatformPublications().configureEach(platformPublication -> {
 				publication.variantModules.put(platformPublication, platformPublication.getModule());
 			});
-			publication.getPlatformPublication().whenElementFinalized(platformPublication -> {
+			publication.getPlatformPublications().whenElementFinalized(platformPublication -> {
 				publication.variantModules.compute(platformPublication, (k, v) -> {
 					assert v != null;
 					// no change, use default value
 					if (v.equals(k.getModule())) {
 						final String variantName = StringGroovyMethods.uncapitalize(platformPublication.getName().substring(publication.getName().length()));
-						return publication.getRootPublication().get().getModule() + "_" + variantName;
+						return publication.getBridgePublication().get().getModule() + "_" + variantName;
 					}
 					return k.getModule(); // use overwritten value
 				});
 
-				platformPublication.setModule(publication.getRootPublication().get().getModule());
-				platformPublication.setOrganisation(publication.getRootPublication().get().getOrganisation());
-				platformPublication.setRevision(publication.getRootPublication().get().getRevision());
+				platformPublication.setModule(publication.getBridgePublication().get().getModule());
+				platformPublication.setOrganisation(publication.getBridgePublication().get().getOrganisation());
+				platformPublication.setRevision(publication.getBridgePublication().get().getRevision());
 			});
-			publication.getPlatforms().set(publication.getPlatformPublication().getElements().map(transformEach(publication.variantModules::get)));
+			publication.getPlatforms().set(publication.getPlatformPublications().getElements().map(transformEach(publication.variantModules::get)));
 
 
-			publication.getPlatformPublication().configureEach(platformPublication -> {
+			publication.getPlatformPublications().configureEach(platformPublication -> {
 				// all generate metadata for variant
 				project.getTasks().named(generateMetadataFileTaskName(platformPublication), GenerateModuleMetadata.class).configure(task -> {
 					//   - doLast, override name to correct artifactId
@@ -120,7 +120,7 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 				}));
 			});
 
-			publication.getPlatformPublication().configureEach(publishTasks(tasks.withType(PublishToIvyRepository.class), task -> {
+			publication.getPlatformPublications().configureEach(publishTasks(tasks.withType(PublishToIvyRepository.class), task -> {
 				task.doFirst("", ignored(new Runnable() {
 					@Override
 					public void run() {
@@ -135,9 +135,9 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 		// PUBLISH ROOT after variants
 		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
 			// Component publication must run after variant publications
-			publication.getRootPublication().configure(publishTasks(project.getTasks(), task -> {
+			publication.getBridgePublication().configure(publishTasks(project.getTasks(), task -> {
 				task.mustRunAfter((Callable<?>) () -> {
-					return publication.getPlatformPublication().getElements().get().stream().map(it -> task.getName().replace(capitalize(publication.getRootPublication().getName()), capitalize(it.getName()))).collect(Collectors.toList());
+					return publication.getPlatformPublications().getElements().get().stream().map(it -> task.getName().replace(capitalize(publication.getBridgePublication().getName()), capitalize(it.getName()))).collect(Collectors.toList());
 				});
 			}));
 		});
@@ -146,7 +146,7 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 
 		// Complete ROOT module metadata remote variants
 		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
-			publication.getRootPublication().configure(publishTasks(project.getTasks().withType(PublishToIvyRepository.class), task -> {
+			publication.getBridgePublication().configure(publishTasks(project.getTasks().withType(PublishToIvyRepository.class), task -> {
 				task.doFirst("", ignored(new Runnable() {
 					@Override
 					public void run() {
@@ -156,7 +156,7 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 							return (ExternalModuleDependency) project.getDependencies().create(organisation + ":" + it + ":" + revision);
 						}).toList();
 
-						File moduleFile = project.getTasks().named(generateMetadataFileTaskName(publication.getRootPublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
+						File moduleFile = project.getTasks().named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
 						Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
 						List<Object> vars = (List<Object>) origRoot.get("variants");
 
@@ -215,14 +215,14 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 
 	/*private*/ static abstract /*final*/ class DefaultPublication implements IvyMultiplatformPublication, MultiplatformPublicationInternal {
 		private final String name;
-		private final NamedDomainObjectProvider<IvyPublication> rootPublication;
+		private final NamedDomainObjectProvider<IvyPublication> bridgePublication;
 		private final DefaultPlatformPublications platformPublications;
 		private final Map<IvyPublication, String> variantModules = new HashMap<>();
 
 		@Inject
-		public DefaultPublication(Names names, NamedDomainObjectProvider<IvyPublication> rootPublication, NamedDomainObjectRegistry<IvyPublication> registry, NamedDomainObjectCollection<IvyPublication> collection, ObjectFactory objects) {
+		public DefaultPublication(Names names, NamedDomainObjectProvider<IvyPublication> bridgePublication, NamedDomainObjectRegistry<IvyPublication> registry, NamedDomainObjectCollection<IvyPublication> collection, ObjectFactory objects) {
 			this.name = names.toString();
-			this.rootPublication = rootPublication;
+			this.bridgePublication = bridgePublication;
 			this.platformPublications = objects.newInstance(DefaultPlatformPublications.class, names, registry, collection);
 		}
 
@@ -233,18 +233,13 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 		}
 
 		@Override
-		public DefaultPlatformPublications getPlatformPublication() {
+		public DefaultPlatformPublications getPlatformPublications() {
 			return platformPublications;
 		}
 
 		@Override
-		public void rootPublication(Action<? super IvyPublication> configureAction) {
-			rootPublication.configure(configureAction);
-		}
-
-		@Override
-		public NamedDomainObjectProvider<IvyPublication> getRootPublication() {
-			return rootPublication;
+		public NamedDomainObjectProvider<IvyPublication> getBridgePublication() {
+			return bridgePublication;
 		}
 
 		@Override
@@ -252,7 +247,7 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 			return name;
 		}
 
-		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends AbstractPlatformPublications<IvyPublication> implements PlatformPublications {
+		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends AbstractPlatformPublications<IvyPublication> implements PlatformPublications<IvyPublication> {
 			private final Names names;
 			private final NamedDomainObjectRegistry<IvyPublication> registry;
 
