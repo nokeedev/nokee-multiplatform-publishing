@@ -13,6 +13,7 @@ import java.io.Reader;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,7 +79,7 @@ public class MavenRepositoryMatchers {
 		};
 	}
 
-	public static Matcher<GradleModuleMetadata> remoteVariants(Matcher<? super Iterable<GradleModuleMetadata.RemoteVariant>> matcher) {
+	public static Matcher<GradleModuleMetadata> remoteVariants(Matcher<? super Collection<GradleModuleMetadata.RemoteVariant>> matcher) {
 		return new FeatureMatcher<GradleModuleMetadata, List<GradleModuleMetadata.RemoteVariant>>(matcher, "", "") {
 			@Override
 			protected List<GradleModuleMetadata.RemoteVariant> featureValueOf(GradleModuleMetadata actual) {

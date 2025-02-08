@@ -6,6 +6,7 @@ import dev.gradleplugins.runnerkit.GradleRunner;
 import dev.nokee.commons.sources.GradleBuildElement;
 import dev.nokee.publishing.multiplatform.fixtures.M2Installation;
 import dev.nokee.publishing.multiplatform.fixtures.MavenRepository;
+import dev.nokee.publishing.multiplatform.fixtures.Repository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -126,14 +127,10 @@ class MavenFunctionalTests {
 		return GradleRunner.create(GradleExecutor.gradleTestKit()).inDirectory(build.getLocation().toFile());
 	}
 
-	@Nested
-	class PublishToMavenRepositoryTests {
+	abstract class PublishToRepositoryTester {
 		BuildResult result;
 
-		@BeforeEach
-		void setup() {
-			result = runner.withArgument("publish").build();
-		}
+		abstract Repository repo();
 
 		@Test
 		void doesNotWarnAboutMultiplePublicationsWithSameCoordinate() {
@@ -142,40 +139,78 @@ class MavenFunctionalTests {
 
 		@Test
 		void publishesAllModules() {
-			assertThat(repository, has(publishedModule("com.example:test-project:1.0")));
-			assertThat(repository, has(publishedModule("com.example:test-project_debug:1.0")));
-			assertThat(repository, has(publishedModule("com.example:test-project_release:1.0")));
+			assertThat(repo(), has(publishedModule("com.example:test-project:1.0")));
+			assertThat(repo(), has(publishedModule("com.example:test-project_debug:1.0")));
+			assertThat(repo(), has(publishedModule("com.example:test-project_release:1.0")));
 		}
 
 		@Test
-		void bridgePublicationHasRemoveVariants() {
-			assertThat(repository.module("com.example", "test-project"),
+		void bridgePublicationHasRemoteVariants() {
+			assertThat(repo().module("com.example", "test-project"),
 				has(moduleMetadata(with(remoteVariants(contains(named("debugLinkElements"), named("releaseLinkElements")))))));
 		}
 
 		@Test
 		void platformPublicationsHasCorrectModuleMetadataComponentModule() {
-			assertThat(repository.module("com.example", "test-project_debug"),
+			assertThat(repo().module("com.example", "test-project_debug"),
 				has(moduleMetadata(with(component(module(equalTo("test-project_debug")))))));
-			assertThat(repository.module("com.example", "test-project_release"),
+			assertThat(repo().module("com.example", "test-project_release"),
 				has(moduleMetadata(with(component(module(equalTo("test-project_release")))))));
 		}
 	}
 
 	@Nested
-	class PublishToMavenLocalTests {
+	class PublishToMavenRepositoryTests extends PublishToRepositoryTester {
+		@BeforeEach
+		void setup() {
+			result = runner.withTasks("publish").build();
+		}
+
+		@Override
+		Repository repo() {
+			return repository;
+		}
+	}
+
+	@Nested
+	class PublishToMavenLocalTests extends PublishToRepositoryTester {
 		@BeforeEach
 		void setup() {
 			runner = runner.configure(m2);
-			runner.withArgument("publishToMavenLocal").build();
+			result = runner.withTasks("publishToMavenLocal").build();
+		}
+
+		@Override
+		Repository repo() {
+			return m2.mavenRepo();
+		}
+	}
+
+	@Nested
+	class PublishToAllMavenRepositoriesTests {
+		@BeforeEach
+		void setup() {
+			runner = runner.configure(m2);
+			runner.withTasks("publishToMavenLocal", "publish").build();
 		}
 
 		@Test
 		void canPublishToMavenLocal() {
+			assertThat(repository, has(publishedModule("com.example:test-project:1.0")));
+			assertThat(repository, has(publishedModule("com.example:test-project_debug:1.0")));
+			assertThat(repository, has(publishedModule("com.example:test-project_release:1.0")));
+
 			assertThat(m2.mavenRepo(), has(publishedModule("com.example:test-project:1.0")));
 			assertThat(m2.mavenRepo(), has(publishedModule("com.example:test-project_debug:1.0")));
 			assertThat(m2.mavenRepo(), has(publishedModule("com.example:test-project_release:1.0")));
 		}
-		// TODO: Perform same check as normal repository
+
+		@Test
+		void bridgePublicationHasRemoteVariants() {
+			assertThat(repository.module("com.example", "test-project"),
+				has(moduleMetadata(with(remoteVariants(allOf(hasSize(2), contains(named("debugLinkElements"), named("releaseLinkElements"))))))));
+			assertThat(m2.mavenRepo().module("com.example", "test-project"),
+				has(moduleMetadata(with(remoteVariants(allOf(hasSize(2), contains(named("debugLinkElements"), named("releaseLinkElements"))))))));
+		}
 	}
 }
