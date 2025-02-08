@@ -1,5 +1,6 @@
 package dev.nokee.publishing.multiplatform;
 
+import dev.nokee.commons.backports.DependencyFactory;
 import groovy.json.JsonBuilder;
 import groovy.json.JsonSlurper;
 import org.codehaus.groovy.runtime.StringGroovyMethods;
@@ -7,6 +8,7 @@ import org.gradle.api.*;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.ivy.IvyPublication;
 import org.gradle.api.publish.ivy.tasks.GenerateIvyDescriptor;
@@ -18,6 +20,7 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository;
 import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 import org.gradle.api.reflect.TypeOf;
+import org.gradle.api.resources.ResourceHandler;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
@@ -194,146 +197,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 
 		// Complete ROOT module metadata remote variants
-		extension.getPublications().withType(new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(new Action<AbstractMultiplatformPublication<? extends Publication>>() {
-			@Override
-			public void execute(AbstractMultiplatformPublication<? extends Publication> publication) {
-				publication.bridgePublication(bridgePublication -> {
-					if (bridgePublication instanceof MavenPublication) {
-						tasks.withType(PublishToMavenRepository.class).configureEach(publishTasks(bridgePublication, task -> {
-							backup(publication, task, ignored(() -> {
-								task.doFirst("", ignored(foo(publication, task.getPublication(), task.getRepository())));
-							}));
-						}));
-
-						tasks.withType(PublishToMavenLocal.class).configureEach(publishTasks(bridgePublication, task -> {
-							backup(publication, task, ignored(() -> {
-								task.doFirst("", ignored(foo(publication, task.getPublication(), ProjectBuilder.builder().build().getRepositories().mavenLocal())));
-							}));
-						}));
-					}
-
-					if (bridgePublication instanceof IvyPublication) {
-						tasks.withType(PublishToIvyRepository.class).configureEach(publishTasks(bridgePublication, task -> {
-							backup(publication, task, ignored(() -> {
-								task.doFirst("", ignored(fooivy(publication, task.getPublication(), task.getRepository())));
-							}));
-						}));
-					}
-				});
-			}
-
-			private void backup(MultiplatformPublication<?> publication, Task task, Action<? super Task> action) {
-				action.execute(task);
-
-				NamedDomainObjectProvider<GenerateModuleMetadata> moduleMetadataTask = tasks.named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class);
-				task.doFirst("", ignored(new Runnable() {
-					@Override
-					public void run() {
-						GenerateModuleMetadata task = moduleMetadataTask.get();
-						Path moduleFile = task.getOutputFile().get().getAsFile().toPath();
-						try {
-							Files.copy(moduleFile, moduleFile.getParent().resolve(moduleFile.getFileName() + ".orig"), StandardCopyOption.REPLACE_EXISTING);
-						} catch (IOException e) {
-							throw new UncheckedIOException(e);
-						}
-					}
-				}));
-				task.doLast("", ignored(new Runnable() {
-					@Override
-					public void run() {
-						GenerateModuleMetadata metadataTask = moduleMetadataTask.get();
-						Path out = metadataTask.getOutputFile().get().getAsFile().toPath();
-						try {
-							Files.copy(out.getParent().resolve(out.getFileName() + ".orig"), out, StandardCopyOption.REPLACE_EXISTING);
-						} catch (IOException e) {
-							throw new UncheckedIOException(e);
-						}
-					}
-				}));
-			}
-
-			private Runnable foo(AbstractMultiplatformPublication<? extends Publication> publication, MavenPublication platformPublication, MavenArtifactRepository repository) {
-				return new Runnable() {
-					@Override
-					public void run() {
-						String groupId = platformPublication.getGroupId();
-						String version = platformPublication.getVersion();
-						List<ExternalModuleDependency> variants = publication.getPlatforms().get().stream().map(it -> {
-							return (ExternalModuleDependency) project.getDependencies().create(groupId + ":" + it + ":" + version);
-						}).toList();
-
-						File moduleFile = project.getTasks().named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
-						Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
-						List<Object> vars = (List<Object>) origRoot.get("variants");
-
-						for (ExternalModuleDependency variant : variants) {
-							URI l = repository.getUrl().resolve(variant.getGroup().replace(".", "/") + "/" + variant.getName() + "/" + variant.getVersion() + "/" + variant.getName() + "-" + variant.getVersion() + ".module");
-							Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(project.getResources().getText().fromUri(l).asReader());
-							List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
-							for (Map<String, Object> v : var) {
-								Map<String, Object> vv = new LinkedHashMap<>(v);
-								vv.remove("dependencies");
-								vv.remove("files");
-								vv.put("available-at", new LinkedHashMap<String, Object>() {{
-									put("url", "../../" + variant.getName() + "/" + variant.getVersion());
-									put("group", variant.getGroup());
-									put("module", variant.getName());
-									put("version", variant.getVersion());
-								}});
-								vars.add(vv);
-							}
-						}
-
-						try (Writer writer = Files.newBufferedWriter(moduleFile.toPath())) {
-							new JsonBuilder(origRoot).writeTo(writer);
-						} catch (IOException e) {
-							throw new UncheckedIOException(e);
-						}
-					}
-				};
-			}
-
-			private Runnable fooivy(AbstractMultiplatformPublication<? extends Publication> publication, IvyPublication platformPublication, IvyArtifactRepository repository) {
-				return new Runnable() {
-					@Override
-					public void run() {
-						String groupId = platformPublication.getOrganisation();
-						String version = platformPublication.getRevision();
-						List<ExternalModuleDependency> variants = publication.getPlatforms().get().stream().map(it -> {
-							return (ExternalModuleDependency) project.getDependencies().create(groupId + ":" + it + ":" + version);
-						}).toList();
-
-						File moduleFile = project.getTasks().named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
-						Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
-						List<Object> vars = (List<Object>) origRoot.get("variants");
-
-						for (ExternalModuleDependency variant : variants) {
-							URI l = repository.getUrl().resolve(variant.getGroup() + "/" + variant.getName() + "/" + variant.getVersion() + "/" + variant.getName() + "-" + variant.getVersion() + ".module");
-							Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(project.getResources().getText().fromUri(l).asReader());
-							List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
-							for (Map<String, Object> v : var) {
-								Map<String, Object> vv = new LinkedHashMap<>(v);
-								vv.remove("dependencies");
-								vv.remove("files");
-								vv.put("available-at", new LinkedHashMap<String, Object>() {{
-									put("url", "../../" + variant.getName() + "/" + variant.getVersion());
-									put("group", variant.getGroup());
-									put("module", variant.getName());
-									put("version", variant.getVersion());
-								}});
-								vars.add(vv);
-							}
-						}
-
-						try (Writer writer = Files.newBufferedWriter(moduleFile.toPath())) {
-							new JsonBuilder(origRoot).writeTo(writer);
-						} catch (IOException e) {
-							throw new UncheckedIOException(e);
-						}
-					}
-				};
-			}
-		});
+		extension.getPublications().withType(new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(project.getObjects().newInstance(AbstractMultiplatformPublicationAction.class, project.getResources()));
 
 
 
@@ -368,5 +232,153 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 		return publication -> {
 			tasks.configureEach(named(publishPublicationToAnyRepositories(publication), action));
 		};
+	}
+
+	/*private*/ static abstract /*final*/ class AbstractMultiplatformPublicationAction implements Action<AbstractMultiplatformPublication<? extends Publication>> {
+		private final DependencyFactory factory;
+		private final TaskContainer tasks;
+		private final ResourceHandler resources;
+
+		@Inject
+		public AbstractMultiplatformPublicationAction(ObjectFactory objects, TaskContainer tasks, ResourceHandler resources) {
+			this.factory = objects.newInstance(DependencyFactory.class);
+			this.tasks = tasks;
+			this.resources = resources;
+		}
+
+		@Override
+		public void execute(AbstractMultiplatformPublication<? extends Publication> publication) {
+			publication.bridgePublication(bridgePublication -> {
+				if (bridgePublication instanceof MavenPublication) {
+					tasks.withType(PublishToMavenRepository.class).configureEach(publishTasks(bridgePublication, task -> {
+						backup(publication, task, ignored(() -> {
+							task.doFirst("", ignored(foo(publication, task.getPublication(), task.getRepository())));
+						}));
+					}));
+
+					tasks.withType(PublishToMavenLocal.class).configureEach(publishTasks(bridgePublication, task -> {
+						backup(publication, task, ignored(() -> {
+							task.doFirst("", ignored(foo(publication, task.getPublication(), ProjectBuilder.builder().build().getRepositories().mavenLocal())));
+						}));
+					}));
+				}
+
+				if (bridgePublication instanceof IvyPublication) {
+					tasks.withType(PublishToIvyRepository.class).configureEach(publishTasks(bridgePublication, task -> {
+						backup(publication, task, ignored(() -> {
+							task.doFirst("", ignored(fooivy(publication, task.getPublication(), task.getRepository())));
+						}));
+					}));
+				}
+			});
+		}
+
+		private void backup(MultiplatformPublication<?> publication, Task task, Action<? super Task> action) {
+			action.execute(task);
+
+			NamedDomainObjectProvider<GenerateModuleMetadata> moduleMetadataTask = tasks.named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class);
+			task.doFirst("", ignored(new Runnable() {
+				@Override
+				public void run() {
+					GenerateModuleMetadata task = moduleMetadataTask.get();
+					Path moduleFile = task.getOutputFile().get().getAsFile().toPath();
+					try {
+						Files.copy(moduleFile, moduleFile.getParent().resolve(moduleFile.getFileName() + ".orig"), StandardCopyOption.REPLACE_EXISTING);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
+				}
+			}));
+			task.doLast("", ignored(new Runnable() {
+				@Override
+				public void run() {
+					GenerateModuleMetadata metadataTask = moduleMetadataTask.get();
+					Path out = metadataTask.getOutputFile().get().getAsFile().toPath();
+					try {
+						Files.copy(out.getParent().resolve(out.getFileName() + ".orig"), out, StandardCopyOption.REPLACE_EXISTING);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
+				}
+			}));
+		}
+
+		private Runnable foo(AbstractMultiplatformPublication<? extends Publication> publication, MavenPublication platformPublication, MavenArtifactRepository repository) {
+			return new Runnable() {
+				@Override
+				public void run() {
+					String groupId = platformPublication.getGroupId();
+					String version = platformPublication.getVersion();
+					List<ExternalModuleDependency> variants = publication.getPlatforms().get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).toList();
+
+					File moduleFile = tasks.named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
+					Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
+					List<Object> vars = (List<Object>) origRoot.get("variants");
+
+					for (ExternalModuleDependency variant : variants) {
+						URI l = repository.getUrl().resolve(variant.getGroup().replace(".", "/") + "/" + variant.getName() + "/" + variant.getVersion() + "/" + variant.getName() + "-" + variant.getVersion() + ".module");
+						Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(resources.getText().fromUri(l).asReader());
+						List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
+						for (Map<String, Object> v : var) {
+							Map<String, Object> vv = new LinkedHashMap<>(v);
+							vv.remove("dependencies");
+							vv.remove("files");
+							vv.put("available-at", new LinkedHashMap<String, Object>() {{
+								put("url", "../../" + variant.getName() + "/" + variant.getVersion());
+								put("group", variant.getGroup());
+								put("module", variant.getName());
+								put("version", variant.getVersion());
+							}});
+							vars.add(vv);
+						}
+					}
+
+					try (Writer writer = Files.newBufferedWriter(moduleFile.toPath())) {
+						new JsonBuilder(origRoot).writeTo(writer);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
+				}
+			};
+		}
+
+		private Runnable fooivy(AbstractMultiplatformPublication<? extends Publication> publication, IvyPublication platformPublication, IvyArtifactRepository repository) {
+			return new Runnable() {
+				@Override
+				public void run() {
+					String groupId = platformPublication.getOrganisation();
+					String version = platformPublication.getRevision();
+					List<ExternalModuleDependency> variants = publication.getPlatforms().get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).toList();
+
+					File moduleFile = tasks.named(generateMetadataFileTaskName(publication.getBridgePublication().get()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
+					Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
+					List<Object> vars = (List<Object>) origRoot.get("variants");
+
+					for (ExternalModuleDependency variant : variants) {
+						URI l = repository.getUrl().resolve(variant.getGroup() + "/" + variant.getName() + "/" + variant.getVersion() + "/" + variant.getName() + "-" + variant.getVersion() + ".module");
+						Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(resources.getText().fromUri(l).asReader());
+						List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
+						for (Map<String, Object> v : var) {
+							Map<String, Object> vv = new LinkedHashMap<>(v);
+							vv.remove("dependencies");
+							vv.remove("files");
+							vv.put("available-at", new LinkedHashMap<String, Object>() {{
+								put("url", "../../" + variant.getName() + "/" + variant.getVersion());
+								put("group", variant.getGroup());
+								put("module", variant.getName());
+								put("version", variant.getVersion());
+							}});
+							vars.add(vv);
+						}
+					}
+
+					try (Writer writer = Files.newBufferedWriter(moduleFile.toPath())) {
+						new JsonBuilder(origRoot).writeTo(writer);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
+				}
+			};
+		}
 	}
 }
