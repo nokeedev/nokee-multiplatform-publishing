@@ -248,7 +248,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 
 		@Override
 		public String toString() {
-			return "multiplatform Maven publication '" + getName() + "'";
+			return "Maven multiplatform publication '" + getName() + "'";
 		}
 	}
 }
