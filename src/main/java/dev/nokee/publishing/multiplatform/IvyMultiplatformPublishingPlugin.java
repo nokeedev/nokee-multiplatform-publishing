@@ -9,7 +9,6 @@ import org.codehaus.groovy.runtime.StringGroovyMethods;
 import org.gradle.api.*;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
@@ -214,13 +213,12 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 	}
 
 	/*private*/ static abstract /*final*/ class DefaultPublication extends AbstractMultiplatformPublication<IvyPublication> implements IvyMultiplatformPublication, MultiplatformPublicationInternal {
-		private final DefaultPlatformPublications platformPublications;
 		private final Map<IvyPublication, String> variantModules = new HashMap<>();
 
 		@Inject
+		@SuppressWarnings("unchecked")
 		public DefaultPublication(Names names, NamedDomainObjectProvider<IvyPublication> bridgePublication, NamedDomainObjectRegistry<IvyPublication> registry, NamedDomainObjectCollection<IvyPublication> collection, ObjectFactory objects) {
-			super(names.toString(), bridgePublication);
-			this.platformPublications = objects.newInstance(DefaultPlatformPublications.class, names, registry, collection);
+			super(names, bridgePublication, objects.newInstance(PlatformPublicationsContainer.class, IvyPublication.class, names, registry, collection));
 		}
 
 		@Override
@@ -232,35 +230,6 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 		@Override
 		public Map<MinimalGMVPublication, String> getModuleNames() {
 			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public DefaultPlatformPublications getPlatformPublications() {
-			return platformPublications;
-		}
-
-		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends ViewAdapter<IvyPublication> implements PlatformPublications<IvyPublication> {
-			private final Names names;
-			private final NamedDomainObjectRegistry<IvyPublication> registry;
-
-			@Inject
-			public DefaultPlatformPublications(Names names, NamedDomainObjectRegistry<IvyPublication> registry, NamedDomainObjectCollection<IvyPublication> collection, ProviderFactory providers, ObjectFactory objects) {
-				super(IvyPublication.class, IvyPublication::getName, collection, objects.newInstance(Finalizer.class), providers, objects);
-				this.names = names;
-				this.registry = registry;
-			}
-
-			@Override
-			public NamedDomainObjectProvider<IvyPublication> register(String name) {
-				return register(names.append(name), registry::register);
-			}
-
-			@Override
-			public NamedDomainObjectProvider<IvyPublication> register(String name, Action<? super IvyPublication> configureAction) {
-				NamedDomainObjectProvider<IvyPublication> result = register(names.append(name), registry::register);
-				result.configure(configureAction);
-				return result;
-			}
 		}
 	}
 }

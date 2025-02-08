@@ -9,7 +9,6 @@ import org.codehaus.groovy.runtime.StringGroovyMethods;
 import org.gradle.api.*;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.maven.MavenPublication;
@@ -228,13 +227,12 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 	}
 
 	/*private*/ static abstract /*final*/ class DefaultPublication extends AbstractMultiplatformPublication<MavenPublication> implements MavenMultiplatformPublication, MultiplatformPublicationInternal {
-		private final DefaultPlatformPublications platformPublications;
 		private final Map<MinimalGMVPublication, String> variantArtifactIds = new LinkedHashMap<>();
 
 		@Inject
+		@SuppressWarnings("unchecked")
 		public DefaultPublication(Names names, NamedDomainObjectProvider<MavenPublication> bridgePublication, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ObjectFactory objects) {
-			super(names.toString(), bridgePublication);
-			this.platformPublications = objects.newInstance(DefaultPlatformPublications.class, names, registry, collection);
+			super(names, bridgePublication, (PlatformPublicationsContainer<MavenPublication>) objects.newInstance(PlatformPublicationsContainer.class, MavenPublication.class, names, registry, collection));
 		}
 
 		@Override
@@ -249,37 +247,8 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		}
 
 		@Override
-		public DefaultPlatformPublications getPlatformPublications() {
-			return platformPublications;
-		}
-
-		@Override
 		public String toString() {
 			return "multiplatform Maven publication '" + getName() + "'";
-		}
-
-		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends ViewAdapter<MavenPublication> implements PlatformPublications<MavenPublication> {
-			private final Names names;
-			private final NamedDomainObjectRegistry<MavenPublication> registry;
-
-			@Inject
-			public DefaultPlatformPublications(Names names, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ProviderFactory providers, ObjectFactory objects) {
-				super(MavenPublication.class, MavenPublication::getName, collection, objects.newInstance(Finalizer.class), providers, objects);
-				this.names = names;
-				this.registry = registry;
-			}
-
-			@Override
-			public NamedDomainObjectProvider<MavenPublication> register(String name) {
-				return register(names.append(name), registry::register);
-			}
-
-			@Override
-			public NamedDomainObjectProvider<MavenPublication> register(String name, Action<? super MavenPublication> configureAction) {
-				NamedDomainObjectProvider<MavenPublication> result = register(names.append(name), registry::register);
-				result.configure(configureAction);
-				return result;
-			}
 		}
 	}
 }
