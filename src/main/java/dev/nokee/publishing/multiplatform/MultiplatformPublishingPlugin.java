@@ -1,6 +1,10 @@
 package dev.nokee.publishing.multiplatform;
 
 import dev.nokee.commons.backports.DependencyFactory;
+import dev.nokee.commons.collections.NamedDomainObjectRegistry;
+import dev.nokee.commons.names.Names;
+import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication;
+import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import groovy.json.JsonBuilder;
 import groovy.json.JsonSlurper;
 import org.codehaus.groovy.runtime.StringGroovyMethods;
@@ -11,6 +15,7 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.publish.Publication;
+import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
 import org.gradle.api.publish.ivy.tasks.GenerateIvyDescriptor;
 import org.gradle.api.publish.ivy.tasks.PublishToIvyRepository;
@@ -50,10 +55,12 @@ import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 /*private*/ abstract /*final*/ class MultiplatformPublishingPlugin implements Plugin<Project> {
+	private final ObjectFactory objects;
 	private final TaskContainer tasks;
 
 	@Inject
-	public MultiplatformPublishingPlugin(TaskContainer tasks) {
+	public MultiplatformPublishingPlugin(ObjectFactory objects, TaskContainer tasks) {
+		this.objects = objects;
 		this.tasks = tasks;
 	}
 
@@ -62,12 +69,18 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 		project.getPluginManager().apply(PublishingPlugin.class); // because we are a publishing plugin
 
 		MultiplatformPublishingExtension extension = project.getExtensions().create("multiplatform", MultiplatformPublishingExtension.class);
-
+		PublishingExtension publishing = project.getExtensions().getByType(PublishingExtension.class);
 		project.getPluginManager().withPlugin("maven-publish", ignored(() -> {
-			project.getPluginManager().apply(MavenMultiplatformPublishingPlugin.class);
+			extension.getPublications().registerFactory(MavenMultiplatformPublication.class, name -> {
+				NamedDomainObjectProvider<MavenPublication> bridgePublication = publishing.getPublications().register(name, MavenPublication.class);
+				return objects.newInstance(DefaultMavenMultiplatformPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(MavenPublication.class)), publishing.getPublications().withType(MavenPublication.class));
+			});
 		}));
 		project.getPluginManager().withPlugin("ivy-publish", ignored(() -> {
-			project.getPluginManager().apply(IvyMultiplatformPublishingPlugin.class);
+			extension.getPublications().registerFactory(IvyMultiplatformPublication.class, name -> {
+				NamedDomainObjectProvider<IvyPublication> bridgePublication = publishing.getPublications().register(name, IvyPublication.class);
+				return objects.newInstance(DefaultIvyMultiplatformPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(IvyPublication.class)), publishing.getPublications().withType(IvyPublication.class));
+			});
 		}));
 
 		extension.getPublications().withType(new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(publication -> {
