@@ -230,6 +230,11 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 		}
 
 		@Override
+		public Map<MinimalGMVPublication, String> getModuleNames() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
 		public DefaultPlatformPublications getPlatformPublications() {
 			return platformPublications;
 		}

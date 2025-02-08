@@ -17,6 +17,7 @@ import org.gradle.api.publish.maven.tasks.GenerateMavenPom;
 import org.gradle.api.publish.maven.tasks.PublishToMavenLocal;
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
+import org.gradle.api.reflect.TypeOf;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 
 import static dev.nokee.commons.names.PublishingTaskNames.*;
 import static dev.nokee.commons.provider.CollectionElementTransformer.transformEach;
+import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Project> {
@@ -58,26 +60,28 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 			return objects.newInstance(DefaultPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(MavenPublication.class)), publishing.getPublications().withType(MavenPublication.class));
 		});
 
-		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
-			publication.getPlatformPublications().configureEach(platformPublication -> {
-				publication.variantArtifactIds.put(platformPublication, platformPublication.getArtifactId());
-			});
-			publication.getPlatformPublications().whenElementFinalized(platformPublication -> {
-				publication.variantArtifactIds.compute(platformPublication, (k, v) -> {
+		extension.getPublications().withType(new TypeOf<DefaultPublication>() {}.getConcreteClass()).configureEach(publication -> {
+			Map<MinimalGMVPublication, String> variantArtifactIds = publication.getModuleNames();
+			publication.getPlatformPublications().configureEach(wrap(platformPublication -> {
+				variantArtifactIds.put(platformPublication, platformPublication.getModule());
+			}));
+			publication.getPlatformPublications().whenElementFinalized(wrap(platformPublication -> {
+				variantArtifactIds.compute(platformPublication, (k, v) -> {
 					assert v != null;
 					// no change, use default value
-					if (v.equals(k.getArtifactId())) {
+					if (v.equals(k.getModule())) {
 						final String variantName = StringGroovyMethods.uncapitalize(platformPublication.getName().substring(publication.getName().length()));
 						return publication.getBridgePublication().get().getArtifactId() + "_" + variantName;
 					}
-					return k.getArtifactId(); // use overwritten value
+					return k.getModule(); // use overwritten value
 				});
 
-				platformPublication.setArtifactId(publication.getBridgePublication().get().getArtifactId());
-				platformPublication.setGroupId(publication.getBridgePublication().get().getGroupId());
-				platformPublication.setVersion(publication.getBridgePublication().get().getVersion());
-			});
-			publication.getPlatforms().set(publication.getPlatformPublications().getElements().map(transformEach(publication.variantArtifactIds::get)));
+				MinimalGMVPublication mainPublication = publication.getBridgePublication().map(MinimalGMVPublication::wrap).get();
+				platformPublication.setModule(mainPublication.getModule());
+				platformPublication.setGroup(mainPublication.getGroup());
+				platformPublication.setVersion(mainPublication.getVersion());
+			}));
+			publication.getPlatforms().set(publication.getPlatformPublications().getElements().map(transformEach(wrap(variantArtifactIds::get))));
 
 			publication.getPlatformPublications().configureEach(platformPublication -> {
 				// all generate metadata for variant
@@ -89,7 +93,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 							File out = task.getOutputFile().get().getAsFile();
 							Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(out);
 							Map<String, Object> component = (Map<String, Object>) root.get("component");
-							component.put("module", publication.variantArtifactIds.get(platformPublication));
+							component.put("module", variantArtifactIds.get(wrap(task.getPublication().get())));
 							try (Writer writer = Files.newBufferedWriter(out.toPath())) {
 								new JsonBuilder(root).writeTo(writer);
 							} catch (IOException e) {
@@ -108,7 +112,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 							try {
 								Pattern pattern = Pattern.compile("<artifactId>[^<]+</artifactId>");
 								List<String> lines = Files.readAllLines(task.getDestination().toPath()).stream().map(t -> {
-									return pattern.matcher(t).replaceFirst("<artifactId>" + publication.variantArtifactIds.get(platformPublication) + "</artifactId>");
+									return pattern.matcher(t).replaceFirst("<artifactId>" + variantArtifactIds.get(wrap(platformPublication)) + "</artifactId>");
 								}).collect(Collectors.toList());
 								Files.write(task.getDestination().toPath(), lines);
 							} catch (Throwable e) {
@@ -123,7 +127,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 				task.doFirst("", ignored(new Runnable() {
 					@Override
 					public void run() {
-						task.getPublication().setArtifactId(publication.variantArtifactIds.get(task.getPublication()));
+						task.getPublication().setArtifactId(variantArtifactIds.get(wrap(task.getPublication())));
 					}
 				}));
 			}));
@@ -131,7 +135,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 				task.doFirst("", ignored(new Runnable() {
 					@Override
 					public void run() {
-						task.getPublication().setArtifactId(publication.variantArtifactIds.get(task.getPublication()));
+						task.getPublication().setArtifactId(variantArtifactIds.get(wrap(task.getPublication())));
 					}
 				}));
 			}));
@@ -225,7 +229,7 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 
 	/*private*/ static abstract /*final*/ class DefaultPublication extends AbstractMultiplatformPublication<MavenPublication> implements MavenMultiplatformPublication, MultiplatformPublicationInternal {
 		private final DefaultPlatformPublications platformPublications;
-		private final Map<MavenPublication, String> variantArtifactIds = new LinkedHashMap<>();
+		private final Map<MinimalGMVPublication, String> variantArtifactIds = new LinkedHashMap<>();
 
 		@Inject
 		public DefaultPublication(Names names, NamedDomainObjectProvider<MavenPublication> bridgePublication, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ObjectFactory objects) {
@@ -236,7 +240,12 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		@Override
 		public String moduleNameOf(Publication platformPublication) {
 			assert platformPublication instanceof MavenPublication;
-			return variantArtifactIds.get(platformPublication);
+			return variantArtifactIds.get(wrap(platformPublication));
+		}
+
+		@Override
+		public Map<MinimalGMVPublication, String> getModuleNames() {
+			return variantArtifactIds;
 		}
 
 		@Override
