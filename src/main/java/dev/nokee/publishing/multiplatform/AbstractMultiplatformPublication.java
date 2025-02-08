@@ -10,11 +10,16 @@ import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.publish.Publication;
 
 import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
+
+import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 
 abstract class AbstractMultiplatformPublication<T extends Publication> implements MultiplatformPublication<T>, MultiplatformPublicationInternal, PlatformAwarePublication {
 	private final String name;
 	private final NamedDomainObjectProvider<T> bridgePublication;
 	private final PlatformPublicationsContainer<T> platformPublications;
+	private final Map<MinimalGMVPublication, String> variantModules = new HashMap<>();
 
 	protected AbstractMultiplatformPublication(Names names, NamedDomainObjectProvider<T> bridgePublication, PlatformPublicationsContainer<T> platformPublications) {
 		this.name = names.toString();
@@ -25,6 +30,16 @@ abstract class AbstractMultiplatformPublication<T extends Publication> implement
 	@Override
 	public final String getName() {
 		return name;
+	}
+
+	@Override
+	public final String moduleNameOf(Publication platformPublication) {
+		return variantModules.get(wrap(platformPublication));
+	}
+
+	@Override
+	public final Map<MinimalGMVPublication, String> getModuleNames() {
+		return variantModules;
 	}
 
 	@Override
