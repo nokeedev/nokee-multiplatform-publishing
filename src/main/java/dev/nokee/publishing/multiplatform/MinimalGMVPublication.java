@@ -23,12 +23,12 @@ abstract class MinimalGMVPublication {
 	protected abstract Publication delegate();
 
 	@Override
-	public int hashCode() {
+	public final int hashCode() {
 		return delegate().hashCode();
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public final boolean equals(Object obj) {
 		if (obj == this) return true;
 		if (!(obj instanceof MinimalGMVPublication)) return false;
 
