@@ -1,5 +1,5 @@
 package dev.nokee.publishing.multiplatform;
 
-interface PlatformPublicationsInternal {
+interface ViewInternal {
 	void finalizeNow();
 }

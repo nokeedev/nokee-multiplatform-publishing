@@ -67,7 +67,7 @@ class IvyIntegrationTests {
 	void defaultsPlatformPublicationModule() {
 		subject.bridgePublication(it -> it.setModule("my-app"));
 		IvyPublication platformPublication = subject.getPlatformPublications().register("debug").get();
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat("required by Gradle when multiple publications", platformPublication.getModule(), equalTo("my-app"));
 		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("my-app_debug"));
 	}
@@ -77,7 +77,7 @@ class IvyIntegrationTests {
 		subject.bridgePublication(it -> it.setModule("my-app"));
 		IvyPublication platformPublication = subject.getPlatformPublications().register("debug").get();
 		platformPublication.setModule("myAppDebug");
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat("required by Gradle when multiple publications", platformPublication.getModule(), equalTo("my-app"));
 		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("myAppDebug"));
 	}
@@ -86,7 +86,7 @@ class IvyIntegrationTests {
 	void defaultsPlatformPublicationOrganization() {
 		subject.bridgePublication(it -> it.setOrganisation("com.example"));
 		Provider<String> organization = subject.getPlatformPublications().register("debug").map(IvyPublication::getOrganisation);
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat(organization, providerOf("com.example"));
 	}
 
@@ -94,7 +94,7 @@ class IvyIntegrationTests {
 	void defaultsPlatformPublicationRevision() {
 		subject.bridgePublication(it -> it.setRevision("1.2"));
 		Provider<String> revision = subject.getPlatformPublications().register("debug").map(IvyPublication::getRevision);
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat(revision, providerOf("1.2"));
 	}
 

@@ -67,7 +67,7 @@ class MavenIntegrationTests {
 	void defaultsPlatformPublicationArtifactId() {
 		subject.bridgePublication(it -> it.setArtifactId("my-app"));
 		MavenPublication platformPublication = subject.getPlatformPublications().register("debug").get();
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat("required by Gradle when multiple publications", platformPublication.getArtifactId(), equalTo("my-app"));
 		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("my-app_debug"));
 	}
@@ -77,7 +77,7 @@ class MavenIntegrationTests {
 		subject.bridgePublication(it -> it.setArtifactId("my-app"));
 		MavenPublication platformPublication = subject.getPlatformPublications().register("debug").get();
 		platformPublication.setArtifactId("myAppDebug");
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat("required by Gradle when multiple publications", platformPublication.getArtifactId(), equalTo("my-app"));
 		assertThat(((MultiplatformPublicationInternal) subject).moduleNameOf(platformPublication), equalTo("myAppDebug"));
 	}
@@ -86,7 +86,7 @@ class MavenIntegrationTests {
 	void defaultsPlatformPublicationGroup() {
 		subject.bridgePublication(it -> it.setGroupId("com.example"));
 		Provider<String> module = subject.getPlatformPublications().register("debug").map(MavenPublication::getGroupId);
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat(module, providerOf("com.example"));
 	}
 
@@ -94,7 +94,7 @@ class MavenIntegrationTests {
 	void defaultsPlatformPublicationVersion() {
 		subject.bridgePublication(it -> it.setVersion("1.2"));
 		Provider<String> version = subject.getPlatformPublications().register("debug").map(MavenPublication::getVersion);
-		((PlatformPublicationsInternal) subject.getPlatformPublications()).finalizeNow();
+		((ViewInternal) subject.getPlatformPublications()).finalizeNow();
 		assertThat(version, providerOf("1.2"));
 	}
 

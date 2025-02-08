@@ -258,13 +258,13 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 			return "multiplatform Maven publication '" + getName() + "'";
 		}
 
-		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends AbstractPlatformPublications<MavenPublication> implements PlatformPublications<MavenPublication> {
+		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends ViewAdapter<MavenPublication> implements PlatformPublications<MavenPublication> {
 			private final Names names;
 			private final NamedDomainObjectRegistry<MavenPublication> registry;
 
 			@Inject
 			public DefaultPlatformPublications(Names names, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ProviderFactory providers, ObjectFactory objects) {
-				super(MavenPublication.class, collection, objects.newInstance(Finalizer.class), providers, objects);
+				super(MavenPublication.class, MavenPublication::getName, collection, objects.newInstance(Finalizer.class), providers, objects);
 				this.names = names;
 				this.registry = registry;
 			}

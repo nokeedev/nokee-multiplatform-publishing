@@ -239,13 +239,13 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 			return platformPublications;
 		}
 
-		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends AbstractPlatformPublications<IvyPublication> implements PlatformPublications<IvyPublication> {
+		/*private*/ static abstract /*final*/ class DefaultPlatformPublications extends ViewAdapter<IvyPublication> implements PlatformPublications<IvyPublication> {
 			private final Names names;
 			private final NamedDomainObjectRegistry<IvyPublication> registry;
 
 			@Inject
 			public DefaultPlatformPublications(Names names, NamedDomainObjectRegistry<IvyPublication> registry, NamedDomainObjectCollection<IvyPublication> collection, ProviderFactory providers, ObjectFactory objects) {
-				super(IvyPublication.class, collection, objects.newInstance(Finalizer.class), providers, objects);
+				super(IvyPublication.class, IvyPublication::getName, collection, objects.newInstance(Finalizer.class), providers, objects);
 				this.names = names;
 				this.registry = registry;
 			}

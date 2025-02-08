@@ -4,6 +4,7 @@ import dev.nokee.commons.names.FullyQualifiedName;
 import dev.nokee.platform.base.View;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectCollection;
+import org.gradle.api.Namer;
 import org.gradle.api.Project;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
@@ -18,16 +19,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-class AbstractPlatformPublications<T extends Publication> implements PlatformPublicationsInternal, View<T> {
+class ViewAdapter<T> implements ViewInternal, View<T> {
 	private final Class<T> elementType;
+	private final Namer<T> namer;
 	private final NamedDomainObjectCollection<T> collection;
 	private final ProviderFactory providers;
 	private final ObjectFactory objects;
 	private final Set<String> knownElements = new LinkedHashSet<>();
 	private final Finalizer finalizer;
 
-	protected AbstractPlatformPublications(Class<T> elementType, NamedDomainObjectCollection<T> collection, Finalizer finalizer, ProviderFactory providers, ObjectFactory objects) {
+	protected ViewAdapter(Class<T> elementType, Namer<T> namer, NamedDomainObjectCollection<T> collection, Finalizer finalizer, ProviderFactory providers, ObjectFactory objects) {
 		this.elementType = elementType;
+		this.namer = namer;
 		this.collection = collection;
 		this.finalizer = finalizer;
 		this.providers = providers;
@@ -48,7 +51,7 @@ class AbstractPlatformPublications<T extends Publication> implements PlatformPub
 
 	private void doConfigureEach(Action<? super T> configureAction) {
 		collection.configureEach(it -> {
-			if (knownElements.contains(it.getName())) {
+			if (knownElements.contains(namer.determineName(it))) {
 				configureAction.execute(it);
 			}
 		});
