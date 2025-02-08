@@ -223,15 +223,14 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		};
 	}
 
-	/*private*/ static abstract /*final*/ class DefaultPublication implements MavenMultiplatformPublication, MultiplatformPublicationInternal {
-		private final Names names;
+	/*private*/ static abstract /*final*/ class DefaultPublication extends AbstractMultiplatformPublication<MavenPublication> implements MavenMultiplatformPublication, MultiplatformPublicationInternal {
 		private final NamedDomainObjectProvider<MavenPublication> bridgePublication;
 		private final DefaultPlatformPublications platformPublications;
 		private final Map<MavenPublication, String> variantArtifactIds = new LinkedHashMap<>();
 
 		@Inject
 		public DefaultPublication(Names names, NamedDomainObjectProvider<MavenPublication> bridgePublication, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ObjectFactory objects) {
-			this.names = names;
+			super(names.toString());
 			this.bridgePublication = bridgePublication;
 			this.platformPublications = objects.newInstance(DefaultPlatformPublications.class, names, registry, collection);
 		}
@@ -250,11 +249,6 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		@Override
 		public NamedDomainObjectProvider<MavenPublication> getBridgePublication() {
 			return bridgePublication;
-		}
-
-		@Override
-		public String getName() {
-			return names.toString();
 		}
 
 		@Override
