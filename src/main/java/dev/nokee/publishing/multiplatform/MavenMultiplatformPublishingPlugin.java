@@ -5,18 +5,14 @@ import dev.nokee.commons.names.Names;
 import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import groovy.json.JsonBuilder;
 import groovy.json.JsonSlurper;
-import org.codehaus.groovy.runtime.StringGroovyMethods;
 import org.gradle.api.*;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.maven.MavenPublication;
-import org.gradle.api.publish.maven.tasks.GenerateMavenPom;
-import org.gradle.api.publish.maven.tasks.PublishToMavenLocal;
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
-import org.gradle.api.reflect.TypeOf;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
@@ -31,14 +27,10 @@ import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import static dev.nokee.commons.names.PublishingTaskNames.*;
-import static dev.nokee.commons.provider.CollectionElementTransformer.transformEach;
+import static dev.nokee.commons.names.PublishingTaskNames.generateMetadataFileTaskName;
+import static dev.nokee.commons.names.PublishingTaskNames.publishPublicationToAnyRepositories;
 import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
-import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Project> {
 	private final ObjectFactory objects;
@@ -57,18 +49,6 @@ abstract /*final*/ class MavenMultiplatformPublishingPlugin implements Plugin<Pr
 		extension.getPublications().registerFactory(MavenMultiplatformPublication.class, name -> {
 			NamedDomainObjectProvider<MavenPublication> bridgePublication = publishing.getPublications().register(name, MavenPublication.class);
 			return objects.newInstance(DefaultPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(MavenPublication.class)), publishing.getPublications().withType(MavenPublication.class));
-		});
-
-
-
-		// PUBLISH ROOT after variants
-		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
-			// Component publication must run after variant publications
-			publication.getBridgePublication().configure(publishTasks(project.getTasks(), task -> {
-				task.mustRunAfter((Callable<?>) () -> {
-					return publication.getPlatformPublications().getElements().get().stream().map(it -> task.getName().replace(capitalize(publication.getBridgePublication().getName()), capitalize(it.getName()))).collect(Collectors.toList());
-				});
-			}));
 		});
 
 

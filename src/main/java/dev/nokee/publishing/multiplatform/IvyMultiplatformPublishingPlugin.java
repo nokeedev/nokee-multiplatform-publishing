@@ -28,13 +28,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 
 import static dev.nokee.commons.names.PublishingTaskNames.generateMetadataFileTaskName;
 import static dev.nokee.commons.names.PublishingTaskNames.publishPublicationToAnyRepositories;
 import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
-import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Project> {
 	private final ObjectFactory objects;
@@ -53,18 +50,6 @@ abstract /*final*/ class IvyMultiplatformPublishingPlugin implements Plugin<Proj
 		extension.getPublications().registerFactory(IvyMultiplatformPublication.class, name -> {
 			NamedDomainObjectProvider<IvyPublication> bridgePublication = publishing.getPublications().register(name, IvyPublication.class);
 			return objects.newInstance(DefaultPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(IvyPublication.class)), publishing.getPublications().withType(IvyPublication.class));
-		});
-
-
-
-		// PUBLISH ROOT after variants
-		extension.getPublications().withType(DefaultPublication.class).configureEach(publication -> {
-			// Component publication must run after variant publications
-			publication.getBridgePublication().configure(publishTasks(project.getTasks(), task -> {
-				task.mustRunAfter((Callable<?>) () -> {
-					return publication.getPlatformPublications().getElements().get().stream().map(it -> task.getName().replace(capitalize(publication.getBridgePublication().getName()), capitalize(it.getName()))).collect(Collectors.toList());
-				});
-			}));
 		});
 
 

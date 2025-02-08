@@ -16,6 +16,7 @@ import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 import org.gradle.api.reflect.TypeOf;
 import org.gradle.api.specs.Spec;
+import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
 
 import javax.inject.Inject;
@@ -26,12 +27,14 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static dev.nokee.commons.names.PublishingTaskNames.*;
 import static dev.nokee.commons.provider.CollectionElementTransformer.transformEach;
 import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
+import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 /*private*/ abstract /*final*/ class MultiplatformPublishingPlugin implements Plugin<Project> {
 	private final TaskContainer tasks;
@@ -168,6 +171,19 @@ import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 		});
 
 
+
+		// PUBLISH ROOT after variants
+		extension.getPublications().withType(new TypeOf<MultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(publication -> {
+			// Component publication must run after variant publications
+			publication.getBridgePublication().configure(publishTasks(project.getTasks(), task -> {
+				task.mustRunAfter((Callable<?>) () -> {
+					return publication.getPlatformPublications().getElements().get().stream().map(it -> task.getName().replace(capitalize(publication.getBridgePublication().getName()), capitalize(it.getName()))).collect(Collectors.toList());
+				});
+			}));
+		});
+
+
+
 		project.afterEvaluate(ignored(() -> {
 			extension.getPublications().all(ignored(() -> {}));
 		}));
@@ -193,5 +209,11 @@ import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 
 	private static <T extends Publication, S extends Task> Action<S> publishTasks(T publication, Action<? super S> action) {
 		return named(publishPublicationToAnyRepositories(publication), action);
+	}
+
+	private static <T extends Publication, S extends Task> Action<T> publishTasks(TaskCollection<S> tasks, Action<? super S> action) {
+		return publication -> {
+			tasks.configureEach(named(publishPublicationToAnyRepositories(publication), action));
+		};
 	}
 }
