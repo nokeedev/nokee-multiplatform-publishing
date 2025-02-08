@@ -1,7 +1,5 @@
 package dev.nokee.publishing.multiplatform;
 
-import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication;
-import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import org.gradle.api.Project;
 import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.testfixtures.ProjectBuilder;

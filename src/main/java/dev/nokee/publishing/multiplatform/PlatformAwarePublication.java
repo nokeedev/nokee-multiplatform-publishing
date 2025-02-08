@@ -2,6 +2,6 @@ package dev.nokee.publishing.multiplatform;
 
 import org.gradle.api.provider.SetProperty;
 
-public interface PlatformAwarePublication {
+interface PlatformAwarePublication {
 	SetProperty<String> getPlatforms();
 }

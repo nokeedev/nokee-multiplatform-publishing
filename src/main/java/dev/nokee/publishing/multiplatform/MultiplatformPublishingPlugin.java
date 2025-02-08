@@ -3,8 +3,6 @@ package dev.nokee.publishing.multiplatform;
 import dev.nokee.commons.backports.DependencyFactory;
 import dev.nokee.commons.collections.NamedDomainObjectRegistry;
 import dev.nokee.commons.names.Names;
-import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication;
-import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import groovy.json.JsonBuilder;
 import groovy.json.JsonSlurper;
 import org.codehaus.groovy.runtime.StringGroovyMethods;
@@ -14,6 +12,7 @@ import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.ivy.IvyPublication;
@@ -73,13 +72,13 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 		project.getPluginManager().withPlugin("maven-publish", ignored(() -> {
 			extension.getPublications().registerFactory(MavenMultiplatformPublication.class, name -> {
 				NamedDomainObjectProvider<MavenPublication> bridgePublication = publishing.getPublications().register(name, MavenPublication.class);
-				return objects.newInstance(DefaultMavenMultiplatformPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(MavenPublication.class)), publishing.getPublications().withType(MavenPublication.class));
+				return objects.newInstance(MavenMultiplatformPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(MavenPublication.class)), publishing.getPublications().withType(MavenPublication.class));
 			});
 		}));
 		project.getPluginManager().withPlugin("ivy-publish", ignored(() -> {
 			extension.getPublications().registerFactory(IvyMultiplatformPublication.class, name -> {
 				NamedDomainObjectProvider<IvyPublication> bridgePublication = publishing.getPublications().register(name, IvyPublication.class);
-				return objects.newInstance(DefaultIvyMultiplatformPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(IvyPublication.class)), publishing.getPublications().withType(IvyPublication.class));
+				return objects.newInstance(IvyMultiplatformPublication.class, Names.of(name), bridgePublication, new NamedDomainObjectRegistry<>(publishing.getPublications().containerWithType(IvyPublication.class)), publishing.getPublications().withType(IvyPublication.class));
 			});
 		}));
 
@@ -254,12 +253,14 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 		private final DependencyFactory factory;
 		private final TaskContainer tasks;
 		private final ResourceHandler resources;
+		private final ProviderFactory providers;
 
 		@Inject
-		public AbstractMultiplatformPublicationAction(ObjectFactory objects, TaskContainer tasks, ResourceHandler resources) {
+		public AbstractMultiplatformPublicationAction(ObjectFactory objects, TaskContainer tasks, ResourceHandler resources, ProviderFactory providers) {
 			this.factory = objects.newInstance(DependencyFactory.class);
 			this.tasks = tasks;
 			this.resources = resources;
+			this.providers = providers;
 		}
 
 		@Override
@@ -268,13 +269,13 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 				if (bridgePublication instanceof MavenPublication) {
 					tasks.withType(PublishToMavenRepository.class).configureEach(publishTasks(bridgePublication, task -> {
 						backup(bridgePublication, task, ignored(() -> {
-							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), wrap(task.getPublication()), ArtifactPathResolver.forMaven(task.getRepository()))));
+							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forMaven))));
 						}));
 					}));
 
 					tasks.withType(PublishToMavenLocal.class).configureEach(publishTasks(bridgePublication, task -> {
 						backup(bridgePublication, task, ignored(() -> {
-							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), wrap(task.getPublication()), ArtifactPathResolver.forMaven(ProjectBuilder.builder().build().getRepositories().mavenLocal()))));
+							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(() -> ProjectBuilder.builder().build().getRepositories().mavenLocal()).map(ArtifactPathResolver::forMaven))));
 						}));
 					}));
 				}
@@ -282,7 +283,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 				if (bridgePublication instanceof IvyPublication) {
 					tasks.withType(PublishToIvyRepository.class).configureEach(publishTasks(bridgePublication, task -> {
 						backup(bridgePublication, task, ignored(() -> {
-							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), wrap(task.getPublication()), ArtifactPathResolver.forIvy(task.getRepository()))));
+							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forIvy))));
 						}));
 					}));
 				}
@@ -319,20 +320,20 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 			}));
 		}
 
-		private Runnable generateBridgeMetadata(Provider<Set<String>> platformNames, MinimalGMVPublication platformPublication, ArtifactPathResolver resolver) {
+		private Runnable generateBridgeMetadata(Provider<Set<String>> platformNames, Provider<MinimalGMVPublication> platformPublication, Provider<ArtifactPathResolver> resolver) {
 			return new Runnable() {
 				@Override
 				public void run() {
-					String groupId = platformPublication.getGroup();
-					String version = platformPublication.getVersion();
+					String groupId = platformPublication.get().getGroup();
+					String version = platformPublication.get().getVersion();
 					List<ExternalModuleDependency> variants = platformNames.get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).toList();
 
-					File moduleFile = tasks.named(generateMetadataFileTaskName(platformPublication.delegate()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
+					File moduleFile = tasks.named(generateMetadataFileTaskName(platformPublication.get().delegate()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
 					Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
 					List<Object> vars = (List<Object>) origRoot.get("variants");
 
 					for (ExternalModuleDependency variant : variants) {
-						URI l = resolver.resolve(variant);
+						URI l = resolver.get().resolve(variant);
 						Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(resources.getText().fromUri(l).asReader());
 						List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
 						for (Map<String, Object> v : var) {

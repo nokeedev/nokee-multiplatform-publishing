@@ -1,6 +1,5 @@
 package dev.nokee.publishing.multiplatform;
 
-import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;

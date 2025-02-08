@@ -42,7 +42,6 @@ class MavenFunctionalTests {
 			it.id("maven-publish");
 		});
 		build.getBuildFile().append(groovyDsl("""
-			import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication
 			import org.gradle.api.Project
 			import org.gradle.api.artifacts.ConfigurationContainer
 			import org.gradle.api.attributes.Usage

@@ -5,8 +5,6 @@ import dev.gradleplugins.runnerkit.GradleExecutor;
 import dev.gradleplugins.runnerkit.GradleRunner;
 import dev.nokee.commons.sources.GradleBuildElement;
 import dev.nokee.publishing.multiplatform.fixtures.IvyRepository;
-import dev.nokee.publishing.multiplatform.fixtures.M2Installation;
-import dev.nokee.publishing.multiplatform.fixtures.MavenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +17,6 @@ import static dev.nokee.commons.hamcrest.Has.has;
 import static dev.nokee.commons.hamcrest.With.with;
 import static dev.nokee.commons.hamcrest.gradle.NamedMatcher.named;
 import static dev.nokee.publishing.multiplatform.fixtures.IvyFileRepository.ivyRepository;
-import static dev.nokee.publishing.multiplatform.fixtures.MavenFileRepository.mavenRepository;
 import static dev.nokee.publishing.multiplatform.fixtures.MavenRepositoryMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -41,7 +38,6 @@ class IvyFunctionalTests {
 			it.id("ivy-publish");
 		});
 		build.getBuildFile().append(groovyDsl("""
-			import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication
 			import org.gradle.api.Project
 			import org.gradle.api.artifacts.ConfigurationContainer
 			import org.gradle.api.attributes.Usage

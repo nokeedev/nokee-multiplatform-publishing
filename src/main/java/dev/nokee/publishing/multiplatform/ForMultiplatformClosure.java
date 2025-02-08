@@ -1,9 +1,6 @@
 package dev.nokee.publishing.multiplatform;
 
-import dev.nokee.publishing.multiplatform.ivy.IvyMultiplatformPublication;
-import dev.nokee.publishing.multiplatform.maven.MavenMultiplatformPublication;
 import org.gradle.api.Action;
-import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublicationContainer;
 import org.gradle.api.publish.ivy.IvyPublication;
@@ -23,26 +20,27 @@ abstract /*final*/ class ForMultiplatformClosure {
 		return call(name, type, ignored(() -> {}));
 	}
 
-	public <T extends Publication> Action<PublicationContainer> call(String name, Class<T> type, Action<? super MultiplatformPublication<T>> action) {
+	public <T extends Publication> Action<PublicationContainer> call(String name, Class<T> type, Action<? super MultiplatformPublication<T>> configureAction) {
 		return publications -> {
-			Class<? extends MultiplatformPublication<?>> implementationType = null;
-			if (type.equals(MavenPublication.class)) {
-				implementationType = MavenMultiplatformPublication.class;
-			} else if (type.equals(IvyPublication.class)) {
-				implementationType = IvyMultiplatformPublication.class;
-			} else {
-				throw new UnsupportedOperationException("Unsupported publication type");
-			}
+			final Class<? extends MultiplatformPublication<T>> implementationType = implementationType(type);
 
-			final NamedDomainObjectProvider<? extends MultiplatformPublication<?>> result;
 			if (!multiplatform.getPublications().getNames().contains(name)) {
-				result = multiplatform.getPublications().register(name, implementationType);//objects.newInstance(implementationType, name, publications.register(name, type), publications);
-			} else {
-				result = multiplatform.getPublications().named(name, implementationType);
+				multiplatform.getPublications().register(name, implementationType);
 			}
 
-			((NamedDomainObjectProvider<MultiplatformPublication<T>>) result).configure(action);
+			multiplatform.getPublications().named(name, implementationType, configureAction);
 		};
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T extends Publication> Class<? extends MultiplatformPublication<T>> implementationType(Class<? extends Publication> type) {
+		if (type.equals(MavenPublication.class)) {
+			return (Class) MavenMultiplatformPublication.class;
+		} else if (type.equals(IvyPublication.class)) {
+			return (Class) IvyMultiplatformPublication.class;
+		} else {
+			throw new UnsupportedOperationException("Unsupported publication type");
+		}
 	}
 
 //	public <T extends Publication> Action<PublicationContainer> call(AdhocComponentWithVariants mainComponent, Class<T> type) {
