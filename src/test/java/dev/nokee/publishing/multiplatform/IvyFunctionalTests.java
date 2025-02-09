@@ -3,8 +3,10 @@ package dev.nokee.publishing.multiplatform;
 import dev.gradleplugins.runnerkit.BuildResult;
 import dev.gradleplugins.runnerkit.GradleExecutor;
 import dev.gradleplugins.runnerkit.GradleRunner;
+import dev.gradleplugins.runnerkit.TaskOutcome;
 import dev.nokee.commons.sources.GradleBuildElement;
 import dev.nokee.publishing.multiplatform.fixtures.IvyRepository;
+import dev.nokee.publishing.multiplatform.fixtures.Repository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,13 +15,10 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 
 import static dev.gradleplugins.buildscript.syntax.Syntax.groovyDsl;
-import static dev.nokee.commons.hamcrest.Has.has;
-import static dev.nokee.commons.hamcrest.With.with;
-import static dev.nokee.commons.hamcrest.gradle.NamedMatcher.named;
 import static dev.nokee.publishing.multiplatform.fixtures.IvyFileRepository.ivyRepository;
-import static dev.nokee.publishing.multiplatform.fixtures.MavenRepositoryMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
 
 class IvyFunctionalTests {
 	@TempDir Path testDirectory;
@@ -122,55 +121,35 @@ class IvyFunctionalTests {
 	}
 
 	@Nested
-	class PublishToIvyRepositoryTests {
-		BuildResult result;
+	class PublishToIvyRepositoryTests extends PublishToRepositoryTester {
+		@Override
+		protected Repository repo() {
+			return repository;
+		}
 
-		@BeforeEach
-		void setup() {
-			result = runner.withArgument("publish").build();
+		@Override
+		protected String publishToRepository() {
+			return "publish";
+		}
+
+		@Override
+		protected GradleRunner runner() {
+			return runner;
 		}
 
 		@Test
-		void doesNotWarnAboutMultiplePublicationsWithSameCoordinate() {
-            assertThat(result.getOutput(), not(containsString("Multiple publications with coordinates")));
-        }
+		void skipsPublishBridgePublicationToIvyRepositoryOnMissingPublishedPlatformPublications() {
+			BuildResult result = runner.withArgument("-x").withArgument(":publishCppDebugPublicationToIvyRepository").withTasks(":publishAllPublicationsToIvyRepository").build();
+			assertThat(result.task(":publishCppPublicationToIvyRepository").getOutcome(), is(TaskOutcome.SKIPPED));
+			assertThat(result.task(":publishCppPublicationToIvyRepository").getOutput(), containsString("Warning: Publication with coordinate 'com.example:test-project_debug:1.0' not published."));
+		}
 
-        @Test
-        void publishesAllModules() {
-            assertThat(repository, has(publishedModule("com.example:test-project:1.0")));
-            assertThat(repository, has(publishedModule("com.example:test-project_debug:1.0")));
-            assertThat(repository, has(publishedModule("com.example:test-project_release:1.0")));
-        }
-
-        @Test
-        void bridgePublicationHasRemoveVariants() {
-            assertThat(repository.module("com.example", "test-project"),
-				has(moduleMetadata(with(remoteVariants(contains(named("debugLinkElements"), named("releaseLinkElements")))))));
-        }
-
-        @Test
-		void platformPublicationsHasCorrectModuleMetadataComponentModule() {
-			assertThat(repository.module("com.example", "test-project_debug"),
-				has(moduleMetadata(with(component(module(equalTo("test-project_debug")))))));
-			assertThat(repository.module("com.example", "test-project_release"),
-				has(moduleMetadata(with(component(module(equalTo("test-project_release")))))));
+		@Test
+		void skipsPublishBridgePublicationToIvyRepositoryDirectlyOnMissingPublishedPlatformPublications() {
+			BuildResult result = runner.withTasks(":publishCppPublicationToIvyRepository").build();
+			assertThat(result.task(":publishCppPublicationToIvyRepository").getOutcome(), is(TaskOutcome.SKIPPED));
+			assertThat(result.task(":publishCppPublicationToIvyRepository").getOutput(), containsString("Warning: Publication with coordinate 'com.example:test-project_debug:1.0' not published."));
+			assertThat(result.task(":publishCppPublicationToIvyRepository").getOutput(), containsString("Warning: Publication with coordinate 'com.example:test-project_release:1.0' not published."));
 		}
 	}
-
-//	@Nested
-//	class PublishToMavenLocalTests {
-//		@BeforeEach
-//		void setup() {
-//			runner = runner.configure(m2);
-//			runner.withArgument("publishToMavenLocal").build();
-//		}
-//
-//		@Test
-//		void canPublishToMavenLocal() {
-//			assertThat(m2.mavenRepo(), has(publishedModule("com.example:test-project:1.0")));
-//            assertThat(m2.mavenRepo(), has(publishedModule("com.example:test-project_debug:1.0")));
-//            assertThat(m2.mavenRepo(), has(publishedModule("com.example:test-project_release:1.0")));
-//        }
-//        // TODO: Perform same check as normal repository
-//    }
 }

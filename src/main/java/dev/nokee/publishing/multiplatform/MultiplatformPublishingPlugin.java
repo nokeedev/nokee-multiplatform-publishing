@@ -10,6 +10,8 @@ import org.gradle.api.*;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
@@ -26,6 +28,7 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository;
 import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 import org.gradle.api.reflect.TypeOf;
+import org.gradle.api.resources.MissingResourceException;
 import org.gradle.api.resources.ResourceHandler;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskCollection;
@@ -55,6 +58,7 @@ import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 /*private*/ abstract /*final*/ class MultiplatformPublishingPlugin implements Plugin<Project> {
+	private static Logger LOGGER = Logging.getLogger(MultiplatformPublishingPlugin.class);
 	private final ObjectFactory objects;
 	private final TaskContainer tasks;
 
@@ -269,12 +273,14 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 			publication.bridgePublication(bridgePublication -> {
 				if (bridgePublication instanceof MavenPublication) {
 					tasks.withType(PublishToMavenRepository.class).configureEach(publishTasks(bridgePublication, task -> {
+						task.onlyIf("", allPlatformsPublished(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forMaven)));
 						backup(bridgePublication, task, ignored(() -> {
 							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forMaven))));
 						}));
 					}));
 
 					tasks.withType(PublishToMavenLocal.class).configureEach(publishTasks(bridgePublication, task -> {
+						// We don't skip publishing for MavenLocal as a special case
 						backup(bridgePublication, task, ignored(() -> {
 							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(() -> ProjectBuilder.builder().build().getRepositories().mavenLocal()).map(ArtifactPathResolver::forMaven))));
 						}));
@@ -283,12 +289,32 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 				if (bridgePublication instanceof IvyPublication) {
 					tasks.withType(PublishToIvyRepository.class).configureEach(publishTasks(bridgePublication, task -> {
+						task.onlyIf("", allPlatformsPublished(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forIvy)));
 						backup(bridgePublication, task, ignored(() -> {
 							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forIvy))));
 						}));
 					}));
 				}
 			});
+		}
+
+		private Spec<Task> allPlatformsPublished(Provider<Set<String>> platformNames, Provider<MinimalGMVPublication> platformPublication, Provider<ArtifactPathResolver> resolver) {
+			return task -> {
+				String groupId = platformPublication.get().getGroup();
+				String version = platformPublication.get().getVersion();
+				List<ExternalModuleDependency> variants = platformNames.get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).toList();
+
+				boolean result = true;
+				for (ExternalModuleDependency variant : variants) {
+					try {
+						resources.getText().fromUri(resolver.get().resolve(variant)).asString();
+					} catch (MissingResourceException ex) {
+						LOGGER.warn(String.format("Warning: Publication with coordinate '%s:%s:%s' not published.", variant.getGroup(), variant.getName(), variant.getVersion()));
+						result = false;
+					}
+				}
+				return result;
+			};
 		}
 
 		private void backup(Publication bridgePublication, Task task, Action<? super Task> action) {
@@ -330,24 +356,32 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 					List<ExternalModuleDependency> variants = platformNames.get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).toList();
 
 					File moduleFile = tasks.named(generateMetadataFileTaskName(platformPublication.get().delegate()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
+					@SuppressWarnings("unchecked")
 					Map<String, Object> origRoot = (Map<String, Object>) new JsonSlurper().parse(moduleFile);
+					@SuppressWarnings("unchecked")
 					List<Object> vars = (List<Object>) origRoot.get("variants");
 
 					for (ExternalModuleDependency variant : variants) {
-						URI l = resolver.get().resolve(variant);
-						Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(resources.getText().fromUri(l).asReader());
-						List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
-						for (Map<String, Object> v : var) {
-							Map<String, Object> vv = new LinkedHashMap<>(v);
-							vv.remove("dependencies");
-							vv.remove("files");
-							vv.put("available-at", new LinkedHashMap<String, Object>() {{
-								put("url", "../../" + variant.getName() + "/" + variant.getVersion());
-								put("group", variant.getGroup());
-								put("module", variant.getName());
-								put("version", variant.getVersion());
-							}});
-							vars.add(vv);
+						try {
+							URI l = resolver.get().resolve(variant);
+							@SuppressWarnings("unchecked")
+							Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(resources.getText().fromUri(l).asReader());
+							@SuppressWarnings("unchecked")
+							List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
+							for (Map<String, Object> v : var) {
+								Map<String, Object> vv = new LinkedHashMap<>(v);
+								vv.remove("dependencies");
+								vv.remove("files");
+								vv.put("available-at", new LinkedHashMap<String, Object>() {{
+									put("url", "../../" + variant.getName() + "/" + variant.getVersion());
+									put("group", variant.getGroup());
+									put("module", variant.getName());
+									put("version", variant.getVersion());
+								}});
+								vars.add(vv);
+							}
+						} catch (MissingResourceException ex) {
+							LOGGER.warn(String.format("Warning: Publication with coordinate '%s:%s:%s' not found in '...'.", variant.getGroup(), variant.getName(), variant.getVersion()));
 						}
 					}
 

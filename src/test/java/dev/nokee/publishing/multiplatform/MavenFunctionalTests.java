@@ -3,6 +3,7 @@ package dev.nokee.publishing.multiplatform;
 import dev.gradleplugins.runnerkit.BuildResult;
 import dev.gradleplugins.runnerkit.GradleExecutor;
 import dev.gradleplugins.runnerkit.GradleRunner;
+import dev.gradleplugins.runnerkit.TaskOutcome;
 import dev.nokee.commons.sources.GradleBuildElement;
 import dev.nokee.publishing.multiplatform.fixtures.M2Installation;
 import dev.nokee.publishing.multiplatform.fixtures.MavenRepository;
@@ -125,48 +126,36 @@ class MavenFunctionalTests {
 		return GradleRunner.create(GradleExecutor.gradleTestKit()).inDirectory(build.getLocation().toFile());
 	}
 
-	abstract class PublishToRepositoryTester {
-		BuildResult result;
-
-		abstract Repository repo();
-
-		@Test
-		void doesNotWarnAboutMultiplePublicationsWithSameCoordinate() {
-			assertThat(result.getOutput(), not(containsString("Multiple publications with coordinates")));
-		}
-
-		@Test
-		void publishesAllModules() {
-			assertThat(repo(), has(publishedModule("com.example:test-project:1.0")));
-			assertThat(repo(), has(publishedModule("com.example:test-project_debug:1.0")));
-			assertThat(repo(), has(publishedModule("com.example:test-project_release:1.0")));
-		}
-
-		@Test
-		void bridgePublicationHasRemoteVariants() {
-			assertThat(repo().module("com.example", "test-project"),
-				has(moduleMetadata(with(remoteVariants(contains(named("debugLinkElements"), named("releaseLinkElements")))))));
-		}
-
-		@Test
-		void platformPublicationsHasCorrectModuleMetadataComponentModule() {
-			assertThat(repo().module("com.example", "test-project_debug"),
-				has(moduleMetadata(with(component(module(equalTo("test-project_debug")))))));
-			assertThat(repo().module("com.example", "test-project_release"),
-				has(moduleMetadata(with(component(module(equalTo("test-project_release")))))));
-		}
-	}
-
 	@Nested
 	class PublishToMavenRepositoryTests extends PublishToRepositoryTester {
-		@BeforeEach
-		void setup() {
-			result = runner.withTasks("publish").build();
+		@Override
+		protected Repository repo() {
+			return repository;
 		}
 
 		@Override
-		Repository repo() {
-			return repository;
+		protected String publishToRepository() {
+			return "publish";
+		}
+
+		@Override
+		protected GradleRunner runner() {
+			return runner;
+		}
+
+		@Test
+		void skipsPublishBridgePublicationToMavenRepositoryOnMissingPublishedPlatformPublications() {
+			BuildResult result = runner.withArgument("-x").withArgument(":publishCppDebugPublicationToMavenRepository").withTasks(":publishAllPublicationsToMavenRepository").build();
+			assertThat(result.task(":publishCppPublicationToMavenRepository").getOutcome(), is(TaskOutcome.SKIPPED));
+			assertThat(result.task(":publishCppPublicationToMavenRepository").getOutput(), containsString("Warning: Publication with coordinate 'com.example:test-project_debug:1.0' not published."));
+		}
+
+		@Test
+		void skipsPublishBridgePublicationToMavenRepositoryDirectlyOnMissingPublishedPlatformPublications() {
+			BuildResult result = runner.withTasks(":publishCppPublicationToMavenRepository").build();
+			assertThat(result.task(":publishCppPublicationToMavenRepository").getOutcome(), is(TaskOutcome.SKIPPED));
+			assertThat(result.task(":publishCppPublicationToMavenRepository").getOutput(), containsString("Warning: Publication with coordinate 'com.example:test-project_debug:1.0' not published."));
+			assertThat(result.task(":publishCppPublicationToMavenRepository").getOutput(), containsString("Warning: Publication with coordinate 'com.example:test-project_release:1.0' not published."));
 		}
 	}
 
@@ -175,12 +164,28 @@ class MavenFunctionalTests {
 		@BeforeEach
 		void setup() {
 			runner = runner.configure(m2);
-			result = runner.withTasks("publishToMavenLocal").build();
 		}
 
 		@Override
-		Repository repo() {
+		protected Repository repo() {
 			return m2.mavenRepo();
+		}
+
+		@Override
+		protected String publishToRepository() {
+			return "publishToMavenLocal";
+		}
+
+		@Override
+		protected GradleRunner runner() {
+			return runner;
+		}
+
+		@Test
+		void alwaysPublishBridgePublicationToMavenLocal() {
+			BuildResult result = runner.withArgument("-x").withArgument(":publishCppDebugPublicationToMavenLocal").withTasks(":publishToMavenLocal").build();
+			assertThat(result.task(":publishCppPublicationToMavenLocal").getOutcome(), is(TaskOutcome.SUCCESS));
+			assertThat(result.task(":publishCppPublicationToMavenLocal").getOutput(), containsString("Warning: Publication with coordinate 'com.example:test-project_debug:1.0' not found in '...'."));
 		}
 	}
 
