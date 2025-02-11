@@ -157,12 +157,24 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 								task.getPublication().setArtifactId(variantArtifactIds.get(wrap(task.getPublication())));
 							}
 						}));
+						task.doLast("", ignored(new Runnable() {
+							@Override
+							public void run() {
+								task.getPublication().setArtifactId(publication.getBridgePublication().map(MavenPublication.class::cast).map(MavenPublication::getArtifactId).get());
+							}
+						}));
 					}));
 					tasks.withType(PublishToMavenLocal.class).configureEach(publishTasks(platformPublication, task -> {
 						task.doFirst("", ignored(new Runnable() {
 							@Override
 							public void run() {
 								task.getPublication().setArtifactId(variantArtifactIds.get(wrap(task.getPublication())));
+							}
+						}));
+						task.doLast("", ignored(new Runnable() {
+							@Override
+							public void run() {
+								task.getPublication().setArtifactId(publication.getBridgePublication().map(MavenPublication.class::cast).map(MavenPublication::getArtifactId).get());
 							}
 						}));
 					}));
@@ -193,6 +205,12 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 							@Override
 							public void run() {
 								task.getPublication().setModule(variantArtifactIds.get(wrap(task.getPublication())));
+							}
+						}));
+						task.doLast("", ignored(new Runnable() {
+							@Override
+							public void run() {
+								task.getPublication().setModule(publication.getBridgePublication().map(IvyPublication.class::cast).map(IvyPublication::getModule).get());
 							}
 						}));
 					}));
