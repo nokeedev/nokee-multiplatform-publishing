@@ -3,6 +3,7 @@ package dev.nokee.publishing.multiplatform;
 import org.gradle.api.Project;
 import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.testfixtures.ProjectBuilder;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,11 @@ class BasicIntegrationTests {
 	@Test
 	void appliesPublishingPlugin() {
 		assertThat(project, has(plugin(PublishingPlugin.class)));
+	}
+
+	@Test
+	void hasForMultiplatformClosureExtraProperties() {
+		assertThat(project, extraProperties(hasEntry(is("forMultiplatform"), instanceOf(ForMultiplatformClosure.class))));
 	}
 
 	@Nested
