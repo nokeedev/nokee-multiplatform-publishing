@@ -1,6 +1,7 @@
 package dev.nokee.publishing.multiplatform;
 
 import org.gradle.api.Action;
+import org.gradle.api.Project;
 import org.gradle.api.publish.Publication;
 import org.gradle.api.publish.PublicationContainer;
 
@@ -38,4 +39,8 @@ public interface ForMultiplatformClosure {
 	 * @param <PublicationType>  the publication type
 	 */
 	<PublicationType extends Publication> Action<PublicationContainer> call(String name, Class<PublicationType> type, Action<? super MultiplatformPublication<PublicationType>> configureAction);
+
+	static ForMultiplatformClosure forProject(Project project) {
+		return (ForMultiplatformClosure) project.getExtensions().getExtraProperties().get("forMultiplatform");
+	}
 }
