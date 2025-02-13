@@ -58,6 +58,7 @@ import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 /*private*/ abstract /*final*/ class MultiplatformPublishingPlugin implements Plugin<Project> {
+	private static final Class<AbstractMultiplatformPublication<? extends Publication>> MultiplatformPublicationInternal = new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass();
 	private static Logger LOGGER = Logging.getLogger(MultiplatformPublishingPlugin.class);
 	private final ObjectFactory objects;
 	private final TaskContainer tasks;
@@ -87,7 +88,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 			});
 		}));
 
-		extension.getPublications().withType(new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(publication -> {
+		extension.getPublications().withType(MultiplatformPublicationInternal).configureEach(publication -> {
 			Map<MinimalGMVPublication, String> variantArtifactIds = publication.getModuleNames();
 			publication.getPlatformPublications().configureEach(wrap(platformPublication -> {
 				variantArtifactIds.put(platformPublication, platformPublication.getModule());
@@ -221,7 +222,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 
 		// PUBLISH ROOT after variants
-		extension.getPublications().withType(new TypeOf<MultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(publication -> {
+		extension.getPublications().withType(MultiplatformPublicationInternal).configureEach(publication -> {
 			// Component publication must run after variant publications
 			publication.getBridgePublication().configure(publishTasks(project.getTasks(), task -> {
 				task.mustRunAfter((Callable<?>) () -> {
@@ -232,9 +233,63 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 
 
+		extension.getPublications().withType(MultiplatformPublicationInternal).configureEach(publication -> {
+			NamedDomainObjectProvider<Configuration> canaryElements = objects.newInstance(ConfigurationRegistry.class).consumable(Names.of(publication.getName()).append("canaryElements").toString());
+			canaryElements.configure(config -> {
+				config.setVisible(false);
+				config.setDescription("Canary elements for " + publication);
+				config.attributes(attributes -> attributes.attribute(Attribute.of("dev.nokee.dummy", String.class), "oui"));
+			});
+
+			publication.bridgePublication(bridgePublication -> {
+				tasks.named(generateMetadataFileTaskName(bridgePublication), GenerateModuleMetadata.class).configure(task -> {
+					task.doLast("", ignored(new Runnable() {
+						@Override
+						public void run() {
+							File out = task.getOutputFile().get().getAsFile();
+
+							@SuppressWarnings("unchecked")
+							Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(out);
+							@SuppressWarnings("unchecked")
+							List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
+							if (var.removeIf(t -> t.get("name").equals(canaryElements.getName()))) {
+								try (Writer writer = Files.newBufferedWriter(out.toPath())) {
+									new JsonBuilder(root).writeTo(writer);
+								} catch (IOException e) {
+									throw new UncheckedIOException(e);
+								}
+							}
+						}
+					}));
+				});
+			});
+			publication.getPlatformPublications().configureEach(platformPublication -> {
+				tasks.named(generateMetadataFileTaskName(platformPublication), GenerateModuleMetadata.class).configure(task -> {
+					task.doLast("", ignored(new Runnable() {
+						@Override
+						public void run() {
+							File out = task.getOutputFile().get().getAsFile();
+
+							@SuppressWarnings("unchecked")
+							Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(out);
+							@SuppressWarnings("unchecked")
+							List<Map<String, Object>> var = (List<Map<String, Object>>) root.get("variants");
+							if (var.removeIf(t -> t.get("name").equals(canaryElements.getName()))) {
+								try (Writer writer = Files.newBufferedWriter(out.toPath())) {
+									new JsonBuilder(root).writeTo(writer);
+								} catch (IOException e) {
+									throw new UncheckedIOException(e);
+								}
+							}
+						}
+					}));
+				});
+			});
+		});
+
 
 		// Complete ROOT module metadata remote variants
-		extension.getPublications().withType(new TypeOf<AbstractMultiplatformPublication<? extends Publication>>() {}.getConcreteClass()).configureEach(project.getObjects().newInstance(AbstractMultiplatformPublicationAction.class, project.getResources()));
+		extension.getPublications().withType(MultiplatformPublicationInternal).configureEach(project.getObjects().newInstance(AbstractMultiplatformPublicationAction.class, project.getResources()));
 
 
 		project.getExtensions().getExtraProperties().set("forMultiplatform", project.getObjects().newInstance(Closure.class, extension));
