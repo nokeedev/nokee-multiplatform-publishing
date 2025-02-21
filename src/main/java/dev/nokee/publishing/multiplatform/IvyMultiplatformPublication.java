@@ -1,6 +1,6 @@
 package dev.nokee.publishing.multiplatform;
 
-import dev.nokee.commons.collections.NamedDomainObjectRegistry;
+import dev.nokee.commons.gradle.NamedDomainObjectRegistry;
 import dev.nokee.commons.names.Names;
 import org.gradle.api.NamedDomainObjectCollection;
 import org.gradle.api.NamedDomainObjectProvider;

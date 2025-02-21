@@ -1,15 +1,18 @@
 package dev.nokee.publishing.multiplatform;
 
+import dev.nokee.commons.backports.ConfigurationRegistry;
 import dev.nokee.commons.backports.DependencyFactory;
-import dev.nokee.commons.collections.NamedDomainObjectRegistry;
+import dev.nokee.commons.gradle.NamedDomainObjectRegistry;
 import dev.nokee.commons.names.Names;
 import groovy.json.JsonBuilder;
 import groovy.json.JsonSlurper;
 import org.codehaus.groovy.runtime.StringGroovyMethods;
 import org.gradle.api.*;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.model.ObjectFactory;
@@ -41,19 +44,19 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static dev.nokee.commons.gradle.ActionUtils.ignored;
+import static dev.nokee.commons.gradle.SpecUtils.named;
+import static dev.nokee.commons.gradle.TransformerUtils.traverse;
 import static dev.nokee.commons.names.PublishingTaskNames.*;
-import static dev.nokee.commons.provider.CollectionElementTransformer.transformEach;
 import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
@@ -133,7 +136,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 				if (platformPublication instanceof MavenPublication) {
 					// all generate pom for variant
-					tasks.withType(GenerateMavenPom.class).configureEach(named(generatePomFileTaskName(platformPublication)::equals, task -> {
+					tasks.withType(GenerateMavenPom.class).configureEach(named(generatePomFileTaskName(platformPublication)::equals).whenSatisfied(task -> {
 						//   - doLast, override artifactId to correct artifact Id
 						task.doLast(ignored(new Runnable() {
 							@Override
@@ -183,7 +186,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 				if (platformPublication instanceof IvyPublication) {
 					// all generate ivy for variant
-					tasks.withType(GenerateIvyDescriptor.class).configureEach(named(generateDescriptorFileTaskName(platformPublication)::equals, task -> {
+					tasks.withType(GenerateIvyDescriptor.class).configureEach(named(generateDescriptorFileTaskName(platformPublication)::equals).whenSatisfied(task -> {
 						//   - doLast, override artifactId to correct artifact Id
 						task.doLast(ignored(new Runnable() {
 							@Override
@@ -297,33 +300,16 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 		project.afterEvaluate(ignored(() -> {
 			extension.getPublications().all(ignored(() -> {}));
 		}));
-	}
-
-	// TODO: Move to nokee-commons
-	private static <T> Action<T> ignored(Runnable runnable) {
-		return new Action<T>() {
-			@Override
-			public void execute(T ignored) {
-				runnable.run();
-			}
-		};
-	}
-
-	private static <T extends Named> Action<T> named(Spec<? super String> nameFilter, Action<? super T> action) {
-		return it -> {
-			if (nameFilter.isSatisfiedBy(it.getName())) {
-				action.execute(it);
-			}
-		};
+//		project.getExtensions().getByType(PublishingExtension.class).getPublications().all(ignored(() -> {}));
 	}
 
 	private static <T extends Publication, S extends Task> Action<S> publishTasks(T publication, Action<? super S> action) {
-		return named(publishPublicationToAnyRepositories(publication), action);
+		return named(publishPublicationToAnyRepositories(publication)).whenSatisfied(action);
 	}
 
 	private static <T extends Publication, S extends Task> Action<T> publishTasks(TaskCollection<S> tasks, Action<? super S> action) {
 		return publication -> {
-			tasks.configureEach(named(publishPublicationToAnyRepositories(publication), action));
+			tasks.configureEach(named(publishPublicationToAnyRepositories(publication)).whenSatisfied(action));
 		};
 	}
 
@@ -525,16 +511,6 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 			} else {
 				throw new UnsupportedOperationException("Unsupported publication type");
 			}
-		}
-
-		// TODO: Move to nokee-commons
-		private static <T> Action<T> ignored(Runnable runnable) {
-			return new Action<T>() {
-				@Override
-				public void execute(T ignored) {
-					runnable.run();
-				}
-			};
 		}
 	}
 }

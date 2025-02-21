@@ -10,7 +10,6 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.provider.SetProperty;
-import org.gradle.api.publish.Publication;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -18,6 +17,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+
+import static dev.nokee.commons.gradle.ActionUtils.ignored;
 
 class ViewAdapter<T> implements ViewInternal, View<T> {
 	private final Class<T> elementType;
@@ -100,16 +101,6 @@ class ViewAdapter<T> implements ViewInternal, View<T> {
 				actions.remove(0).run();
 			}
 		}
-	}
-
-	// TODO: Move to nokee-commons
-	private static <T> Action<T> ignored(Runnable runnable) {
-		return new Action<T>() {
-			@Override
-			public void execute(T ignored) {
-				runnable.run();
-			}
-		};
 	}
 
 	private static Runnable once(Runnable runnable) {
