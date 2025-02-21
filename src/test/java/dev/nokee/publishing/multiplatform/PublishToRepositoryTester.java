@@ -54,4 +54,8 @@ abstract class PublishToRepositoryTester {
 		BuildResult result = runner().withTasks(publishToRepository()).build();
 		assertThat(result.getExecutedTaskPaths(), containsInRelativeOrder(startsWith(":publishCppDebugPublicationTo"), startsWith(":publishCppReleasePublicationTo"), startsWith(":publishCppPublicationTo")));
 	}
+
+	// TODO: Test consuming published artifacts
+
+	// TODO: Test adding more platform artifacts when not all publications are available
 }
