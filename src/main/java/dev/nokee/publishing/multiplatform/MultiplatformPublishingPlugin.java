@@ -135,11 +135,12 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 						@Override
 						public void run() {
 							File out = task.getOutputFile().get().getAsFile();
-							Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(out);
-							Map<String, Object> component = (Map<String, Object>) root.get("component");
-							component.put("module", variantArtifactIds.get(wrap(task.getPublication().get())));
-							try (Writer writer = Files.newBufferedWriter(out.toPath())) {
-								new JsonBuilder(root).writeTo(writer);
+
+							try {
+								String content = new String(Files.readAllBytes(out.toPath()))
+									.replace("\"url\": \"" + wrap(task.getPublication().get()).getModule() + "-", "\"url\": \"" + variantArtifactIds.get(wrap(task.getPublication().get())) + "-")
+									.replace("\"module\": \"" + wrap(task.getPublication().get()).getModule() + "\",", "\"module\": \"" + variantArtifactIds.get(wrap(task.getPublication().get())) + "\",");
+								Files.write(out.toPath(), content.getBytes(StandardCharsets.UTF_8));
 							} catch (IOException e) {
 								throw new UncheckedIOException(e);
 							}
