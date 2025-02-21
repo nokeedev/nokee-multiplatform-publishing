@@ -93,8 +93,12 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 
 		extension.getPublications().withType(MultiplatformPublicationInternal).configureEach(publication -> {
 			Map<MinimalGMVPublication, String> variantArtifactIds = publication.getModuleNames();
+			Map<MinimalGMVPublication, String> variantGroup = new HashMap<>();
+			Map<MinimalGMVPublication, String> variantVersion = new HashMap<>();
 			publication.getPlatformPublications().configureEach(wrap(platformPublication -> {
 				variantArtifactIds.put(platformPublication, platformPublication.getModule());
+				variantGroup.put(platformPublication, platformPublication.getGroup());
+				variantVersion.put(platformPublication, platformPublication.getVersion());
 			}));
 			publication.getPlatformPublications().whenElementFinalized(wrap(platformPublication -> {
 				variantArtifactIds.compute(platformPublication, (k, v) -> {
@@ -108,6 +112,15 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 				});
 
 				MinimalGMVPublication mainPublication = publication.getBridgePublication().map(MinimalGMVPublication::wrap).get();
+
+				if (!variantGroup.get(platformPublication).equals(platformPublication.getGroup()) && !platformPublication.getGroup().equals(mainPublication.getGroup())) {
+					throw new IllegalStateException("must not configure platform's " + (platformPublication.delegate() instanceof IvyPublication ? "organization" : "group id"));
+				}
+
+				if (!variantVersion.get(platformPublication).equals(platformPublication.getVersion()) && !platformPublication.getVersion().equals(mainPublication.getVersion())) {
+					throw new IllegalStateException("must not configure platform's " + (platformPublication.delegate() instanceof IvyPublication ? "revision" : "version"));
+				}
+
 				platformPublication.setModule(mainPublication.getModule());
 				platformPublication.setGroup(mainPublication.getGroup());
 				platformPublication.setVersion(mainPublication.getVersion());

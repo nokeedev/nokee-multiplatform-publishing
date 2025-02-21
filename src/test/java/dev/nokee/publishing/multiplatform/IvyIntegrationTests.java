@@ -17,6 +17,8 @@ import org.mockito.Mockito;
 import java.nio.file.Path;
 
 import static dev.nokee.commons.hamcrest.gradle.NamedMatcher.named;
+import static dev.nokee.commons.hamcrest.gradle.ThrowableMatchers.message;
+import static dev.nokee.commons.hamcrest.gradle.ThrowableMatchers.throwsException;
 import static dev.nokee.commons.hamcrest.gradle.provider.ProviderOfMatcher.providerOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -103,5 +105,19 @@ class IvyIntegrationTests {
 		subject.getPlatformPublications().register("debug");
 		subject.getPlatformPublications().register("release");
 		assertThat(subject.getPlatformArtifacts(), providerOf(contains("my-lib_debug", "my-lib_release")));
+	}
+
+	@Test
+	void throwsExceptionWhenPlatformPublicationsGroupConfigure() {
+		subject.getPlatformPublications().register("debug", it -> it.setOrganisation("dev.example"));
+		subject.getPlatformPublications().register("release", it -> it.setOrganisation("dev.example"));
+		assertThat(() -> subject.getPlatformPublications().finalizeNow(), throwsException(message("must not configure platform's organization")));
+	}
+
+	@Test
+	void throwsExceptionWhenPlatformPublicationsVersionConfigure() {
+		subject.getPlatformPublications().register("debug", it -> it.setRevision("4.2"));
+		subject.getPlatformPublications().register("release", it -> it.setRevision("4.2"));
+		assertThat(() -> subject.getPlatformPublications().finalizeNow(), throwsException(message("must not configure platform's revision")));
 	}
 }
