@@ -28,11 +28,25 @@ kotlin {
 	}
 }
 
+tasks.named('javadoc', Javadoc) {
+	options {
+		windowTitle 'Nokee Multiplatform Publishing'
+		showFromPublic()
+
+		addStringOption('Xdoclint:all,-missing')
+	}
+}
+
 gradlePlugin {
+	website = 'https://nokee.dev'
+	vcsUrl = 'https://github.com/nokeedev/nokee-multiplatform-publishing'
 	plugins {
 		multiplatformPublishing {
 			id = 'dev.nokee.multiplatform-publishing'
 			implementationClass = 'dev.nokee.publishing.multiplatform.MultiplatformPublishingPlugin'
+			displayName = 'Nokee Multiplatform Publishing'
+			description = 'Provides multiplatform publishing capability to Gradle.'
+			tags = ['publishing', 'maven-publish', 'ivy-publish', 'multiplatform']
 		}
 	}
 
