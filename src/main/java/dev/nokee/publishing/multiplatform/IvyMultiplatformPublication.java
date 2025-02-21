@@ -9,7 +9,7 @@ import org.gradle.api.publish.ivy.IvyPublication;
 
 import javax.inject.Inject;
 
-/*private*/ abstract /*final*/ class IvyMultiplatformPublication extends AbstractMultiplatformPublication<IvyPublication> implements MultiplatformPublication<IvyPublication>, PlatformAwarePublication, MultiplatformPublicationInternal {
+/*private*/ abstract /*final*/ class IvyMultiplatformPublication extends AbstractMultiplatformPublication<IvyPublication> implements MultiplatformPublication<IvyPublication>, MultiplatformPublicationInternal {
 	@Inject
 	@SuppressWarnings("unchecked")
 	public IvyMultiplatformPublication(Names names, NamedDomainObjectProvider<IvyPublication> bridgePublication, NamedDomainObjectRegistry<IvyPublication> registry, NamedDomainObjectCollection<IvyPublication> collection, ObjectFactory objects) {

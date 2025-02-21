@@ -109,7 +109,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 				platformPublication.setGroup(mainPublication.getGroup());
 				platformPublication.setVersion(mainPublication.getVersion());
 			}));
-			publication.getPlatforms().set(publication.getPlatformPublications().getElements().map(transformEach(wrap(variantArtifactIds::get))));
+			publication.getPlatformArtifacts().set(publication.getPlatformPublications().getElements().map(traverse(wrap(variantArtifactIds::get))));
 
 			publication.getPlatformPublications().configureEach(platformPublication -> {
 				// all generate metadata for variant
@@ -346,25 +346,25 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 			publication.bridgePublication(bridgePublication -> {
 				if (bridgePublication instanceof MavenPublication) {
 					tasks.withType(PublishToMavenRepository.class).configureEach(publishTasks(bridgePublication, task -> {
-						task.onlyIf("", allPlatformsPublished(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forMaven)));
+						task.onlyIf("", allPlatformsPublished(publication.getPlatformArtifacts(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forMaven)));
 						backup(bridgePublication, task, ignored(() -> {
-							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forMaven))));
+							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatformArtifacts(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forMaven))));
 						}));
 					}));
 
 					tasks.withType(PublishToMavenLocal.class).configureEach(publishTasks(bridgePublication, task -> {
 						// We don't skip publishing for MavenLocal as a special case
 						backup(bridgePublication, task, ignored(() -> {
-							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(() -> ProjectBuilder.builder().build().getRepositories().mavenLocal()).map(ArtifactPathResolver::forMaven))));
+							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatformArtifacts(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(() -> ProjectBuilder.builder().build().getRepositories().mavenLocal()).map(ArtifactPathResolver::forMaven))));
 						}));
 					}));
 				}
 
 				if (bridgePublication instanceof IvyPublication) {
 					tasks.withType(PublishToIvyRepository.class).configureEach(publishTasks(bridgePublication, task -> {
-						task.onlyIf("", allPlatformsPublished(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forIvy)));
+						task.onlyIf("", allPlatformsPublished(publication.getPlatformArtifacts(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forIvy)));
 						backup(bridgePublication, task, ignored(() -> {
-							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatforms(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forIvy))));
+							task.doFirst("", ignored(generateBridgeMetadata(publication.getPlatformArtifacts(), providers.provider(task::getPublication).map(MinimalGMVPublication::wrap), providers.provider(task::getRepository).map(ArtifactPathResolver::forIvy))));
 						}));
 					}));
 				}

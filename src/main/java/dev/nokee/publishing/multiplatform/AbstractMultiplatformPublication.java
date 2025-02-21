@@ -15,7 +15,7 @@ import java.util.Map;
 
 import static dev.nokee.publishing.multiplatform.MinimalGMVPublication.wrap;
 
-abstract class AbstractMultiplatformPublication<T extends Publication> implements MultiplatformPublication<T>, MultiplatformPublicationInternal, PlatformAwarePublication {
+abstract class AbstractMultiplatformPublication<T extends Publication> implements MultiplatformPublication<T>, MultiplatformPublicationInternal {
 	private final String name;
 	private final NamedDomainObjectProvider<T> bridgePublication;
 	private final PlatformPublicationsContainer<T> platformPublications;

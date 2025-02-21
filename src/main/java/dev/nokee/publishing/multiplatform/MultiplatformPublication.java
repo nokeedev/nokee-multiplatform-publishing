@@ -4,6 +4,7 @@ import dev.nokee.platform.base.View;
 import org.gradle.api.Action;
 import org.gradle.api.Named;
 import org.gradle.api.NamedDomainObjectProvider;
+import org.gradle.api.provider.SetProperty;
 import org.gradle.api.publish.Publication;
 
 /**
@@ -26,6 +27,11 @@ public interface MultiplatformPublication<PublicationType extends Publication> e
 	 * {@return the bridge publication of this multiplatform publication.}
 	 */
 	NamedDomainObjectProvider<PublicationType> getBridgePublication();
+
+	/**
+	 * {@return the property to configure all platform artifacts}
+	 */
+	SetProperty<String> getPlatformArtifacts();
 
 	/**
 	 * {@return the platform specific publication container of this multiplatform publication.}

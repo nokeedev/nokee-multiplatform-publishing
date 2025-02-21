@@ -9,7 +9,7 @@ import org.gradle.api.publish.maven.MavenPublication;
 
 import javax.inject.Inject;
 
-/*private*/ abstract /*final*/ class MavenMultiplatformPublication extends AbstractMultiplatformPublication<MavenPublication> implements MultiplatformPublication<MavenPublication>, PlatformAwarePublication, MultiplatformPublicationInternal {
+/*private*/ abstract /*final*/ class MavenMultiplatformPublication extends AbstractMultiplatformPublication<MavenPublication> implements MultiplatformPublication<MavenPublication>, MultiplatformPublicationInternal {
 	@Inject
 	@SuppressWarnings("unchecked")
 	public MavenMultiplatformPublication(Names names, NamedDomainObjectProvider<MavenPublication> bridgePublication, NamedDomainObjectRegistry<MavenPublication> registry, NamedDomainObjectCollection<MavenPublication> collection, ObjectFactory objects) {

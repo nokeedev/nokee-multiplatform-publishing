@@ -102,6 +102,6 @@ class MavenIntegrationTests {
 		subject.bridgePublication(it -> it.setArtifactId("my-lib"));
 		subject.getPlatformPublications().register("debug");
 		subject.getPlatformPublications().register("release");
-		assertThat(subject.getPlatforms(), providerOf(contains("my-lib_debug", "my-lib_release")));
+		assertThat(subject.getPlatformArtifacts(), providerOf(contains("my-lib_debug", "my-lib_release")));
 	}
 }
