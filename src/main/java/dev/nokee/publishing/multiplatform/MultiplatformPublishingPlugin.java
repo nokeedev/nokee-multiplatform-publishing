@@ -375,7 +375,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 			return task -> {
 				String groupId = platformPublication.get().getGroup();
 				String version = platformPublication.get().getVersion();
-				List<ExternalModuleDependency> variants = platformNames.get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).toList();
+				List<ExternalModuleDependency> variants = platformNames.get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).collect(Collectors.toList());
 
 				boolean result = true;
 				for (ExternalModuleDependency variant : variants) {
@@ -426,7 +426,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 				public void run() {
 					String groupId = platformPublication.get().getGroup();
 					String version = platformPublication.get().getVersion();
-					List<ExternalModuleDependency> variants = platformNames.get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).toList();
+					List<ExternalModuleDependency> variants = platformNames.get().stream().map(it -> factory.create(groupId + ":" + it + ":" + version)).collect(Collectors.toList());
 
 					File moduleFile = tasks.named(generateMetadataFileTaskName(platformPublication.get().delegate()), GenerateModuleMetadata.class).get().getOutputFile().get().getAsFile();
 					@SuppressWarnings("unchecked")
