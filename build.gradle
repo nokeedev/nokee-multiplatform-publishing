@@ -61,8 +61,8 @@ testing {
 	suites {
 		test {
 			dependencies {
-				implementation 'dev.nokee.commons:commons-hamcrest'
-				implementation 'dev.nokee.templates:nokee-code-templates'
+				implementation 'dev.nokee.commons:commons-hamcrest:latest.integration'
+				implementation 'dev.nokee.templates:nokee-code-templates:latest.integration'
 				implementation 'dev.gradleplugins:gradle-runner-kit:latest.release'
 				implementation 'dev.nokee.commons:test-gradle-projects:latest.release'
 				implementation libs.mockito.core
