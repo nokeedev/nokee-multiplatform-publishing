@@ -76,7 +76,7 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 	public void apply(Project project) {
 		project.getPluginManager().apply(PublishingPlugin.class); // because we are a publishing plugin
 
-		MultiplatformPublishingExtension extension = project.getExtensions().create("multiplatform", MultiplatformPublishingExtension.class);
+		MultiplatformPublishingExtension extension = project.getExtensions().create(MultiplatformPublishingExtension.class, "multiplatform", Extension.class);
 		PublishingExtension publishing = project.getExtensions().getByType(PublishingExtension.class);
 		project.getPluginManager().withPlugin("maven-publish", ignored(() -> {
 			extension.getPublications().registerFactory(MavenMultiplatformPublication.class, name -> {
@@ -525,6 +525,20 @@ import static org.codehaus.groovy.runtime.StringGroovyMethods.capitalize;
 			} else {
 				throw new UnsupportedOperationException("Unsupported publication type");
 			}
+		}
+	}
+
+	/*private*/ static /*final*/ class Extension implements MultiplatformPublishingExtension {
+		private final ExtensiblePolymorphicDomainObjectContainer<MultiplatformPublication<? extends Publication>> publications;
+
+		@Inject
+		public Extension(ObjectFactory objects) {
+			this.publications = objects.polymorphicDomainObjectContainer(new TypeOf<MultiplatformPublication<? extends Publication>>() {}.getConcreteClass());
+		}
+
+		@Override
+		public ExtensiblePolymorphicDomainObjectContainer<MultiplatformPublication<? extends Publication>> getPublications() {
+			return publications;
 		}
 	}
 }
