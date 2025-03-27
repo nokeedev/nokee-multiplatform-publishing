@@ -51,9 +51,9 @@ gradlePlugin {
 	}
 
 	dependencies {
-		implementation 'dev.nokee.commons:commons-backports:1.1' // DependencyFactory
-		implementation 'dev.nokee.commons:commons-names:1.2'
-		implementation 'dev.nokee.commons:commons-gradle:1.0' // NamedDomainObjectRegistry, traverse, ignored
+		implementation libs.nokee.commons.backports // DependencyFactory
+		implementation libs.nokee.commons.names
+		implementation libs.nokee.commons.gradle // NamedDomainObjectRegistry, traverse, ignored
 	}
 }
 
